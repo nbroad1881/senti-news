@@ -7,6 +7,11 @@ The goal of this project is to predict the popularity of each candidate.  There 
 
 ### How
 * Use news text data to predict popularity of presidential candidates in the United States 2020 election. The news sources will have different biases and based in different regions. Initial approaches can just use lexicons, tokenization, and other rule-based approaches. Next, sentiment analysis and other NLP techniques will be used to determine whether articles are positive or negative.
+
+Possible approaches
+1.  Continuous bag of words, count vectorization, tokenization
+2.  Naive Bayes
+
 * I will first use a news API to gather large amounts of text data from various sources.
 * The predictions will be compared against polls from the Economist/YouGov, Monmouth, Politico/Morning Consult, Harvard-Harris, Emerson, and Quinnipia.
 
