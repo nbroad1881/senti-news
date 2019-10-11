@@ -41,13 +41,13 @@ The goal of this project is to predict the popularity of each candidate.  As of 
 	* Pretrained word vectors
 	* Deep learning integration
 	* Named entity recogition
-3. [Apache OpenNLP] (https://opennlp.apache.org/)
+3. [Apache OpenNLP](https://opennlp.apache.org/)
 4. [NLTK](http://www.nltk.org)
 	* Corpora and lexical resources like WordNet
 	*  Text processing libraries for classification, tokenization, stemming, tagging, parsing, and semantic reasoning, wrappers for industrial-strength NLP libraries 
 5. [PyTorch NLP](https://pytorchnlp.readthedocs.io/en/latest/)
-6. [Textacy] (https://github.com/chartbeat-labs/textacy)
+6. [Textacy](https://github.com/chartbeat-labs/textacy)
 	* Works with SpaCy
 	* Pre and post processing
-7. [TextBlob] (https://textblob.readthedocs.io/en/dev/)
+7. [TextBlob](https://textblob.readthedocs.io/en/dev/)
 	* part-of-speech tagging, noun phrase extraction, sentiment analysis, classification, translation
