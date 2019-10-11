@@ -26,7 +26,7 @@ The goal of this project is to predict the popularity of each candidate.  As of 
 
 
 ### Potential Problems
-1. [News API](https://newsapi.org/) only gives you 260 characters of text, but it gives the URL, so potentially able to [scrape](https://towardsdatascience.com/web-scraping-news-articles-in-python-9dd605799558),[also this](https://hackernoon.com/i-made-a-news-scrapper-with-100-lines-of-python-2e1de1f28f22).
+1. [News API](https://newsapi.org/) only gives you 260 characters of text, but it gives the URL, so potentially able to [scrape](https://towardsdatascience.com/web-scraping-news-articles-in-python-9dd605799558),[scrape pt 2](https://hackernoon.com/i-made-a-news-scrapper-with-100-lines-of-python-2e1de1f28f22).
 2. Certain candidates will receive more media attention which may obscure details.
 3. Each news outlet will have its own bias.
 2. What is the ground truth? Which poll do you trust?
