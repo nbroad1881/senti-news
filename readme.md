@@ -30,6 +30,12 @@ The goal of this project is to predict the popularity of each candidate.  As of 
 	* The API does give a lot of flexibility to get articles and links during small time windows. It only gives 100 articles at a time and 500 requests a day, which means there is a maximum of 500,000 articles that can found in one day. I can specify time ranges to prevent duplicate articles.
 	* I'll have to come up with a consistent way of scraping the main text from each link.
 	* I can filter results by domain (cnn, huffington post, fox, etc.). I may need to restrict where the articles are coming from.
+	* Oct 11: Just using NY Times, CNN, and Fox News, here are the number of results for the following candidates over one week
+		* Joe Biden: 323
+		* Elizabeth Warren: 105
+		* Bernie Sanders: 85
+		* Pete Buttigieg: 38
+		* Kamala Harris: 53
 2. Certain candidates will receive more media attention which may obscure details.
 3. Each news outlet will have its own bias.
 2. What is the ground truth? Which poll do you trust?
