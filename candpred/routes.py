@@ -4,5 +4,5 @@ from candpred import app
 @app.route('/')
 @app.route('/index')
 def index():
-    user = {'username': 'Miguel'}
-    return render_template('base.html', title='Home')
+    
+    return render_template('index.html', title='Home')

@@ -4,13 +4,10 @@
     {% if title %}{{ title }} - Microblog{% else %}Welcome to Microblog{% endif %}
 {% endblock %}
 
-{% block navbar %}
-    <nav class="navbar navbar-default">
-        ... navigation bar here (see complete code on GitHub) ...
-    </nav>
-{% endblock %}
 
-{% block content %}
+
+
+<h1>Presidential Candidate Predictions</h1>
     <div class="container">
         {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -23,4 +20,5 @@
         {# application content needs to be provided in the app_content block #}
         {% block app_content %}{% endblock %}
     </div>
+{% block content %}
 {% endblock %}
