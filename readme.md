@@ -2,7 +2,9 @@
 
 *news_scrapy* contains everything need for scraping sites
 
-*texts* are text documents made by scraping news articles
+*texts* are:
+* text documents made by scraping news articles
+* poll ratings from realclearpolitics
 
 *urls* are csv files containing urls for articles
 
