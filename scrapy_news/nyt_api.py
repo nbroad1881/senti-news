@@ -1,7 +1,10 @@
 import requests
 import json
 
-"""Documentation
+"""
+Testing ground for nyt api
+
+API Documentation
 https://developer.nytimes.com/docs/articlesearch-product/1/routes/articlesearch.json/get
 """
 url = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?q=biden|sanders|warren|buttigieg|harris&api-key' \
