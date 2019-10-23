@@ -3,30 +3,25 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from spacy.lang.en.stop_words import STOP_WORDS
 import spacy
-from spacy.tokenizer import Tokenizer
 import csv
 import pickle
 import sys
 
 
-def load_text_from_file(filepath, isText=True):
+def load_text_from_file(filepath, is_text=True):
     """If **isText is False, treats the file as csv, parses each line."""
     try:
         with open(filepath, 'r') as f:
-            if isText:
+            if is_text:
                 text = f.read()
                 return text
             else:
-                try:
-                    reader = csv.reader(f)
-                    lines = []
-                    for line in reader:
-                        if len(line[0]) > 5:
-                            lines.append(line[0])
-                    return lines
-                except Exception:
-                    print('Invalid file extension:', ext)
-                    return ''
+                reader = csv.reader(f)
+                lines = []
+                for line in reader:
+                    if len(line[0]) > 5:
+                        lines.append(line[0])
+                return lines
     except IOError:
         print('Could not open file', filepath)
         return ''
