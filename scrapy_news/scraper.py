@@ -5,6 +5,8 @@ import datetime
 import sys
 import requests
 
+# todo: have an interactive query
+#     database for text documents
 class NewsSpider(scrapy.Spider):
     """Spider to grab news text
     """
@@ -31,9 +33,6 @@ process.crawl(NewsSpider)
 process.start()
 
 
-# For cnn, you can go to the next page by appending on '&from={}&page=2'
-# In the brackets should be the number put as the value for size in
-# the original query.
 
 def form_fox_query(q, min_date, max_date, start):
     s_1 = 'https://api.foxnews.com/v1/content/search?q='
@@ -48,19 +47,30 @@ def form_fox_query(q, min_date, max_date, start):
     return ''.join([s_1, q, s_2, min_dt, s_3, max_dt, s_4, start, s_5])
 
 
+# todo: writes text to file
 def scrape_nyt(response):
     title = response.xpath('./head/title//text()').get()
     body = response.xpath('//section[contains(@name, "articleBody")]//text()').getall()
 
 
+# For cnn, you can go to the next page by appending on '&from={}&page=2'
+# In the brackets should be the number put as the value for size in
+# the original query.
+
+# todo: loop the correct number of times according to num_results
+#   and come up with a way to check for duplicate articles
+#   have support for date in the query
 def scrape_cnn():
     url = 'https://search.api.cnn.io/content?size=100&q=biden%20%7C%20sanders%20%7C%20warren%20%7C%20buttigieg%20%7C' \
       '%20harris&category=us&type=article&sort=newest'
     response = requests.get(url)
     if response.status_code == 200:
-        articles = json.loads(response.text)
+        articles = json.loads(response.text)['result']
         with open('cnn_articles.txt','a') as f:
+            num_results = None
             for a in articles:
+                if num_results is None:
+                    num_results = json.loads(response.text)['meta']['of']
                 if a.type != 'article':
                     #skip over
                 f.write(a['_id']+'\n')
