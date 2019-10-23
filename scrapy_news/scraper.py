@@ -72,7 +72,8 @@ def scrape_cnn():
                 if num_results is None:
                     num_results = json.loads(response.text)['meta']['of']
                 if a.type != 'article':
-                    #skip over
+                    pass
+                    # skip over
                 f.write(a['_id']+'\n')
                 f.write(a['body']+'\n')
                 f.write(a['url']+'\n')
