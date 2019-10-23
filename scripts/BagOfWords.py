@@ -31,8 +31,6 @@ def load_text_from_file(filepath, isText=True):
         print('Could not open file', filepath)
         return ''
 
-    return txt.strip()
-
 
 if __name__ == '__main__':
 
