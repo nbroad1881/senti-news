@@ -66,10 +66,10 @@ def scrape_nyt(response):
     body = response.xpath('//section[contains(@name, "articleBody")]//text()').getall()
 
 
-# For cnn, you can go to the next page by appending on '&from={}&page=2'
-# In the brackets should be the number put as the value for size in
-# the original query.
 def scrape_cnn(unq_ids, _from=0, name=''):
+    """Searches cnn for name, saving articles that are not in the unique
+    id set. Ordered by newest, rather than by relevance. Relevance produces
+    results from 2017 first"""
     url = f'https://search.api.cnn.io/content?size={CNN_RESULTS_SIZE}' \
           f'&q={name}&type=article&sort=newest&from={str(_from)}'
     response = requests.get(url)
@@ -79,7 +79,7 @@ def scrape_cnn(unq_ids, _from=0, name=''):
             return
         articles = json.loads(response.text)['result']
         num_results = json.loads(response.text)['meta']['of']
-        with open('cnn_articles.csv', 'a') as f:
+        with open('../texts/cnn_articles.csv', 'a') as f:
             writer = csv.writer(f)
             for a in articles:
                 if a['type'] != 'article' or a['_id'] in unq_ids:
@@ -91,6 +91,7 @@ def scrape_cnn(unq_ids, _from=0, name=''):
 
 
 def get_unique_cnn_ids():
+    """Returns a set of unique cnn article ids"""
     try:
         with open('cnn_ids.csv', 'r') as f:
             reader = csv.reader(f)
