@@ -126,12 +126,28 @@ def get_fox_urls(res):
 today = datetime.date.today().isoformat()
 
 
-if __name__ == "__main__":
-
+def cnn():
     cnn_ids = get_unique_cnn_ids()
     for c in DEM_CANDIDATES:
         scrape_cnn(unq_ids=cnn_ids, name=c)
     set_unique_cnn_ids(cnn_ids)
-    # process = CrawlerProcess()
-    # process.crawl(NewsSpider, start_urls=[form_fox_query('biden', '2019-01-01', '2019-10-10', 0)])
-    # process.start()
+
+
+def fox_news():
+    process = CrawlerProcess()
+    process.crawl(NewsSpider, start_urls=[form_fox_query('biden', '2019-01-01', '2019-10-10', 0)])
+    process.start()
+
+
+if __name__ == "__main__":
+
+    response = input("Which news company would you like to scrape?\n"
+                     "1. CNN\n2. Fox News\n3. NYTimes\n4. All of the above")
+    if int(response) == 1:
+        cnn()
+    elif int(response) == 2:
+        fox_news()
+    elif int(response) == 3:
+        pass
+    elif int(response) == 4:
+        pass
