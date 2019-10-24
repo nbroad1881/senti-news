@@ -14,18 +14,12 @@ class NewsSpider(scrapy.Spider):
     name = 'scrape-news'
 
     def __init__(self, start_urls=[]):
+        """
+
+        :type start_urls: List(str)
+        """
         super().__init__()
         self.start_urls = start_urls
-
-    # print(sys.argv)
-    # start_urls = [
-    #     'https://search.api.cnn.io/content?size=100&q=biden%20%7C%20sanders%20%7C%20warren%20%7C%20buttigieg%20%7C'
-    #     '%20harris&category=us&type=article&sort=newest',
-    #     'https://api.foxnews.com/v1/content/search?q=buttigieg%20|%20harris%20|%20sanders&ss=fn&section.path=fnc'
-    #     '/politics&type=story&min_date=2019-10-22&max_date=2019-10-23&start=0&callback=angular.callbacks._0&cb'
-    #     '=2019101792',
-    #
-    # ]
 
     def parse(self, response):
         if 'angular' in response.text[:30]:
