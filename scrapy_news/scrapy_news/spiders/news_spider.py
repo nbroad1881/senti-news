@@ -45,7 +45,7 @@ class News(scrapy.Spider):
 #bbc response.xpath('.//div[@class="story-body__inner"]//p//text()').getall()
 #cnn response.xpath('//p[contains(@class,"zn-body__paragraph") and not(contains(@class,"zn-body__footer"))]//text() | //div[contains(@class,"zn-body__paragraph")]/text() | //a[parent::div[contains(@class,"zn-body__paragraph")]]/text()').getall()   
 #nyt response.xpath('//section[contains(@name, "articleBody")]//text()').getall()
-#fox response.xpath('//div[@class="article-body"]//p/text()|//div[@class="article-body"]//p/a/text()').getall()
+#fox response.xpath('//div[(@class="article-body")]//p/text()|//div[@class="article-body"]//p/a/text()').getall()
 
  
 
