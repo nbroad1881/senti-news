@@ -2,14 +2,14 @@ import scrapy
 from scrapy.crawler import CrawlerProcess
 import json
 import datetime
-import sys
+import csv
 import requests
 
 
 # todo: have an interactive query
 #     database for text documents
 class NewsSpider(scrapy.Spider):
-    """Spider to grab news text
+    """Spider to grab news article text
     """
     name = 'scrape-news'
 
@@ -29,11 +29,21 @@ class NewsSpider(scrapy.Spider):
             except KeyError:
                 print(f'Response did not return the number of results\n{d}')
             fox_urls = get_fox_urls(d['response'])
+            for d, t, u in fox_urls:
+                yield scrapy.Request(u[0], callback=self.scrape_fox, cb_kwargs=dict(date=d, title=t))
             print("Fox results:", n_results)
             print(fox_urls)
-            # scrape_fox(fox_urls)
+
+    def scrape_fox(self, response, date='', title=''):
+        with open('fox_articles.csv', 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([date, title, response.xpath('//div[(@class="article-body")]//p/text()|//div['
+                                                         '@class="article-body"]//p/a/text()').getall()])
+
+        # todo: allow for page and numresults. It looks like fox allows for results in pages of 10
 
 
+#   i.e the 2nd page starts at start=10, 3rd page at start=20
 def form_fox_query(q, min_date, max_date, start):
     s_1 = 'https://api.foxnews.com/v1/content/search?q='
     q = q
@@ -90,13 +100,10 @@ def get_fox_urls(res):
         urls.append((dt, title, url))
     return urls
 
-def scrape_fox(urls):
-    with open('fox_articles.txt','a') as f:
-        pass
 
 today = datetime.date.today().isoformat()
 
 if __name__ == "__main__":
     process = CrawlerProcess()
-    process.crawl(NewsSpider, start_urls=[form_fox_query('biden', '2019-01-01', '2019-10-10', start=0)])
+    process.crawl(NewsSpider, start_urls=[form_fox_query('biden', '2019-01-01', '2019-10-10', 0)])
     process.start()
