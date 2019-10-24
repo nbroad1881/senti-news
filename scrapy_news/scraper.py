@@ -5,6 +5,9 @@ import datetime
 import csv
 import requests
 
+CNN_RESULTS_SIZE = 100
+DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
+
 
 # todo: have an interactive query
 #     database for text documents
@@ -66,32 +69,50 @@ def scrape_nyt(response):
 # For cnn, you can go to the next page by appending on '&from={}&page=2'
 # In the brackets should be the number put as the value for size in
 # the original query.
-
-# todo: loop the correct number of times according to num_results
-#   and come up with a way to check for duplicate articles
-#   have support for date in the query
-def scrape_cnn():
-    url = 'https://search.api.cnn.io/content?size=100&q=biden%20%7C%20sanders%20%7C%20warren%20%7C%20buttigieg%20%7C' \
-          '%20harris&category=us&type=article&sort=newest'
+def scrape_cnn(unq_ids, _from=0, name=''):
+    url = f'https://search.api.cnn.io/content?size={CNN_RESULTS_SIZE}' \
+          f'&q={name}&type=article&sort=newest&from={str(_from)}'
     response = requests.get(url)
     if response.status_code == 200:
+        print(f'Request accepted ({name}), from={_from}')
+        if _from > 1000:
+            return
         articles = json.loads(response.text)['result']
-        with open('cnn_articles.txt', 'a') as f:
-            num_results = None
+        num_results = json.loads(response.text)['meta']['of']
+        with open('cnn_articles.csv', 'a') as f:
+            writer = csv.writer(f)
             for a in articles:
-                if num_results is None:
-                    num_results = json.loads(response.text)['meta']['of']
-                if a.type != 'article':
-                    pass
-                    # skip over
-                f.write(a['_id'] + '\n')
-                f.write(a['body'] + '\n')
-                f.write(a['url'] + '\n')
-                f.write(a['firstPublishDate'] + '\n')
-                f.write(a['headline'] + '\n')
+                if a['type'] != 'article' or a['_id'] in unq_ids:
+                    continue
+                writer.writerow([a['firstPublishDate'], a['headline'], a['url'], a['_id'], a['body']])
+                unq_ids.add(a['_id'])
+        if _from + CNN_RESULTS_SIZE < num_results:
+            scrape_cnn(unq_ids, _from=_from + CNN_RESULTS_SIZE, name=name)
+
+
+def get_unique_cnn_ids():
+    try:
+        with open('cnn_ids.csv', 'r') as f:
+            reader = csv.reader(f)
+            ids = set()
+            for row in reader:
+                ids.update(row)
+            return ids
+    except FileNotFoundError:
+        print('cnn_ids.csv does not exist yet, returning empty set')
+        return set()
+
+
+def set_unique_cnn_ids(unq_ids):
+    """Stores the unique article ids in a csv
+    Always overwrites"""
+    with open('cnn_ids.csv', 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(list(unq_ids))
 
 
 def get_fox_urls(res):
+    """Pulls date, title, and url from API response"""
     urls = []
     for d in res['docs']:
         dt = d['date']
@@ -103,7 +124,13 @@ def get_fox_urls(res):
 
 today = datetime.date.today().isoformat()
 
+
 if __name__ == "__main__":
-    process = CrawlerProcess()
-    process.crawl(NewsSpider, start_urls=[form_fox_query('biden', '2019-01-01', '2019-10-10', 0)])
-    process.start()
+
+    cnn_ids = get_unique_cnn_ids()
+    for c in DEM_CANDIDATES:
+        scrape_cnn(unq_ids=cnn_ids, name=c)
+    set_unique_cnn_ids(cnn_ids)
+    # process = CrawlerProcess()
+    # process.crawl(NewsSpider, start_urls=[form_fox_query('biden', '2019-01-01', '2019-10-10', 0)])
+    # process.start()
