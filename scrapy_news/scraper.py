@@ -28,11 +28,16 @@ class NewsSpider(scrapy.Spider):
     # ]
 
     def parse(self, response):
-        if('angular' in response.text[:30]):
-            fox_urls = get_fox_urls(response)
+        if 'angular' in response.text[:30]:
+            d = json.loads(response.text[21:-1])
+            try:
+                n_results = d['response']['numFound']
+            except KeyError:
+                print(f'Response did not return the number of results\n{d}')
+            fox_urls = get_fox_urls(d['response'])
+            print("Fox results:", n_results)
+            print(fox_urls)
             # scrape_fox(fox_urls)
-        print('HELLO'.center(50, '*'))
-        print(response.url)
 
 
 def form_fox_query(q, min_date, max_date, start):
@@ -82,18 +87,8 @@ def scrape_cnn():
                 f.write(a['headline'] + '\n')
 
 
-def get_fox_urls(response):
-    try:
-        text = response.text[21:]
-        if len(text) < 0:
-            print(f'Response was not usual length \n{text}')
-            return ''
-    except TypeError:
-        print(f'Response text was not a string object but of type {type(text)}')
-        return ''
-    res = json.loads(text)
-    n_results = res['numFound']
-    urls = [n_results]
+def get_fox_urls(res):
+    urls = []
     for d in res['docs']:
         dt = d['date']
         title = d['title']
@@ -101,10 +96,13 @@ def get_fox_urls(response):
         urls.append((dt, title, url))
     return urls
 
+def scrape_fox(urls):
+    with open('fox_articles.txt','a') as f:
+        pass
 
 today = datetime.date.today().isoformat()
 
 if __name__ == "__main__":
     process = CrawlerProcess()
-    process.crawl(NewsSpider, start_urls=[form_fox_query(q='biden', '2019-01-01', '2019-10-10', start=0)])
+    process.crawl(NewsSpider, start_urls=[form_fox_query('biden', '2019-01-01', '2019-10-10', start=0)])
     process.start()
