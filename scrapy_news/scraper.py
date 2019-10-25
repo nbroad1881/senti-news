@@ -174,7 +174,7 @@ def fox_news():
 if __name__ == "__main__":
 
     response = input("Which news company would you like to scrape?\n"
-                     "1. CNN\n2. Fox News\n3. NYTimes\n4. All of the above")
+                     "1. CNN\n2. Fox News\n3. NYTimes\n4. All of the above\n")
     if int(response) == 1:
         cnn()
     elif int(response) == 2:
