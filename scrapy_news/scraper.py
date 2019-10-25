@@ -16,34 +16,24 @@ class NewsSpider(scrapy.Spider):
     """
     name = 'scrape-news'
 
-    def __init__(self, start_urls=[]):
+    def __init__(self, start_urls=[], unq_ids=set()):
         """
 
         :type start_urls: List(str)
         """
         super().__init__()
         self.start_urls = start_urls
+        self.unq_ids = unq_ids
 
     def parse(self, response):
         if 'angular' in response.text[:30]:
             d = json.loads(response.text[21:-1])
-            try:
-                n_results = d['response']['numFound']
-            except KeyError:
-                print(f'Response did not return the number of results\n{d}')
-            fox_urls = get_fox_urls(d['response'])
-            for d, t, u in fox_urls:
-                yield scrapy.Request(u[0], callback=self.scrape_fox, cb_kwargs=dict(date=d, title=t))
-            print("Fox results:", n_results)
-            print(fox_urls)
-
-    def scrape_fox(self, response, date='', title=''):
-        with open('fox_articles.csv', 'a') as f:
-            writer = csv.writer(f)
-            writer.writerow([date, title, response.xpath('//div[(@class="article-body")]//p/text()|//div['
-                                                         '@class="article-body"]//p/a/text()').getall()])
-
-        # todo: allow for page and numresults. It looks like fox allows for results in pages of 10
+            fox_info = get_fox_info(d['response'])
+            for d, t, u, i in fox_info:
+                if u[0] in self.unq_ids or i != 'article':
+                    continue
+                yield scrapy.Request(u[0], callback=scrape_fox, cb_kwargs=dict(date=d, title=t))
+                self.unq_ids.add(u[0])
 
 
 #   i.e the 2nd page starts at start=10, 3rd page at start=20
