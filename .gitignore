@@ -51,9 +51,11 @@ build/
 ehthumbs.db
 Thumbs.db
 
+.idea
 
-/scrapy_news/cnn_ids.csv
-/scrapy_news/fox_articles.csv
+cnn_ids.csv
+fox_articles.csv
+cnn_articles.csv
 /scrapy_news/fox_ids.csv
 /scrapy_news/fox_urls.txt
 /scrapy_news/fox_urls2.txt
