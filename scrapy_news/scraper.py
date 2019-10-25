@@ -11,6 +11,13 @@ DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
 
 # todo: have an interactive query
 #     database for text documents
+def scrape_fox(response, date='', title=''):
+    with open('fox_articles.csv', 'a') as f:
+        writer = csv.writer(f)
+        writer.writerow([date, title, ' '.join(response.xpath('//div[(@class="article-body")]//p/text()|//div['
+                                                              '@class="article-body"]//p/a/text()').getall())])
+
+
 class NewsSpider(scrapy.Spider):
     """Spider to grab news article text
     """
