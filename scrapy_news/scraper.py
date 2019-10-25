@@ -189,6 +189,52 @@ def fox_news():
         set_unique_fox_ids(unq_ids)
 
 
+def form_nyt_query(query, page, begin_date='20190301', end_date='20191001', sort='newest'):
+    s_1 = f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}'
+    s_2 = f'&face=true&page={str(page)}&begin_date={begin_date}&end_date={end_date}'
+    s_3 = f'fq=document_type%3Aarticle%20AND%20type_of_material%3ANews'
+    s_4 = f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'
+    return ''.join([s_1, s_2, s_3, s_4])
+
+
+# todo: have parameter be how many days back from today
+#   the search should be. subtract from datetime object
+def nyt():
+    for c in DEM_CANDIDATES:
+        date_today = datetime.date.today().isoformat().replace('-', '')
+        url = form_nyt_query(query=c, end_date=date_today, page=0)
+        r = requests.get(url)
+        if r.status_code != 200:
+            print(f'Request failed:{r.status_code},{url}')
+            break
+        if r.status_code == 429:
+            print(f'Hit limit: {r.status_code}, sleeping')
+            while r.status_code == 429:
+                print('.', end='')
+                time.sleep(10)
+                r = requests.get(url)
+            print('Retrying')
+        num_results = json.loads(r.text)['response']['meta']['hits']
+        num_results = 1000 if num_results > 1000 else num_results
+        start_urls = [form_nyt_query(query=c, end_date=date_today, page=n) for n in range(num_results // 10)]
+        process = CrawlerProcess(settings={
+            'CONCURRENT_REQUESTS': 2,
+            'DOWNLOAD_DELAY' : 6
+        })
+        process.crawl(NewsSpider, start_urls=start_urls)
+        process.start()
+
+
+def get_nyt_info(docs):
+    info = []
+    for d in docs:
+        url = d['web_url']
+        dt = d['pub_date']
+        _id = d['_id']
+        info.append((url, dt, _id))
+    return info
+
+
 if __name__ == "__main__":
 
     response = input("Which news company would you like to scrape?\n"
