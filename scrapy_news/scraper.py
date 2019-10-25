@@ -165,6 +165,7 @@ def fox_news():
             r = requests.get(start).text
             j = json.loads(r[21:-1])
             num_results = j['response']['numFound']
+            num_results = 1000 if num_results > 1000 else num_results
             start_urls = [form_fox_query(c, '2019-03-01', dt_today, n) for n in range(0, num_results, 10)]
             process = CrawlerProcess()
             process.crawl(NewsSpider, start_urls=start_urls, unq_ids=unq_ids)
