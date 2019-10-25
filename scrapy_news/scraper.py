@@ -159,15 +159,19 @@ def fox_news():
     dt_today = datetime.date.today().isoformat()
 
     unq_ids = get_unique_fox_ids()
-    for c in DEM_CANDIDATES:
-        start = form_fox_query('biden', '2019-01-01', dt_today, 0)
-        r = requests.get(start).text
-        j = json.loads(r[21:-1])
-        num_results = j['response']['numFound']
-        start_urls = [form_fox_query(c, '2019-03-01', dt_today, n) for n in range(0, num_results, 10)]
-        process = CrawlerProcess()
-        process.crawl(NewsSpider, start_urls=start_urls, unq_ids=unq_ids)
-        process.start()
+    try:
+        for c in DEM_CANDIDATES:
+            start = form_fox_query('biden', '2019-01-01', dt_today, 0)
+            r = requests.get(start).text
+            j = json.loads(r[21:-1])
+            num_results = j['response']['numFound']
+            start_urls = [form_fox_query(c, '2019-03-01', dt_today, n) for n in range(0, num_results, 10)]
+            process = CrawlerProcess()
+            process.crawl(NewsSpider, start_urls=start_urls, unq_ids=unq_ids)
+            process.start()
+            set_unique_fox_ids(unq_ids)
+    except Exception as e:
+        print('e')
         set_unique_fox_ids(unq_ids)
 
 
