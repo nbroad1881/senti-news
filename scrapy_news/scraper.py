@@ -69,9 +69,13 @@ def form_fox_query(q, min_date, max_date, start):
 
 
 # todo: writes text to file
-def scrape_nyt(response):
+def scrape_nyt(response, date, _id):
     title = response.xpath('./head/title//text()').get()
     body = response.xpath('//section[contains(@name, "articleBody")]//text()').getall()
+    with open('nyt_articles.csv', 'a') as f:
+        print('wrote to file')
+        writer = csv.writer(f)
+        writer.writerow([date, title, _id, ' '.join(body)])
 
 
 def scrape_cnn(unq_ids, _from=0, name=''):
