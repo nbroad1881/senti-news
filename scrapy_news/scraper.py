@@ -103,6 +103,23 @@ def get_unique_cnn_ids():
         return set()
 
 
+def get_unique_fox_ids():
+    """Returns a set of unique fox article ids.
+    There are no actual id tag for fox articles,
+    so this treats each url as a unique id
+    """
+    try:
+        with open('fox_ids.csv', 'r') as f:
+            reader = csv.reader(f)
+            ids = set()
+            for row in reader:
+                ids.update(row)
+            return ids
+    except FileNotFoundError:
+        print('fox_ids.csv does not exist yet, returning empty set')
+        return set()
+
+
 def set_unique_cnn_ids(unq_ids):
     """Stores the unique article ids in a csv
     Always overwrites"""
@@ -111,7 +128,15 @@ def set_unique_cnn_ids(unq_ids):
         writer.writerow(list(unq_ids))
 
 
-def get_fox_urls(res):
+def set_unique_fox_ids(unq_ids):
+    """Stores the unique article urls in a csv
+    Always overwrites"""
+    with open('fox_ids.csv', 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(list(unq_ids))
+
+
+def get_fox_info(res):
     """Pulls date, title, and url from API response"""
     urls = []
     for d in res['docs']:
