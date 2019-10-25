@@ -148,9 +148,6 @@ def get_fox_info(res):
     return urls
 
 
-today = datetime.date.today().isoformat()
-
-
 def cnn():
     cnn_ids = get_unique_cnn_ids()
     for c in DEM_CANDIDATES:
