@@ -244,6 +244,6 @@ if __name__ == "__main__":
     elif int(response) == 2:
         fox_news()
     elif int(response) == 3:
-        pass
+        nyt()
     elif int(response) == 4:
         pass
