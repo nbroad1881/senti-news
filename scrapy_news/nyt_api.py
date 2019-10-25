@@ -9,11 +9,13 @@ https://developer.nytimes.com/docs/articlesearch-product/1/routes/articlesearch.
 """
 url = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?q=biden|sanders|warren|buttigieg|harris&api-key' \
       '=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7 '
+
 r = json.loads(requests.get(url).text)
 
-print(r['response']['meta'])
 
-# Response structure
+print(r.keys())
+
+# NYT Response structure
 # 'status'
 # 'copyright'
 # 'response' []
