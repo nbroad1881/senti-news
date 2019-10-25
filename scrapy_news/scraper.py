@@ -4,6 +4,7 @@ import json
 import datetime
 import csv
 import requests
+import time
 
 CNN_RESULTS_SIZE = 100
 DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
@@ -41,6 +42,14 @@ class NewsSpider(scrapy.Spider):
                     continue
                 yield scrapy.Request(u[0], callback=scrape_fox, cb_kwargs=dict(date=d, title=t))
                 self.unq_ids.add(u[0])
+        elif 'New York Times' in response.text[:100]:
+            print('scraping nyt')
+            d = json.loads(response.text)
+            nyt_info = get_nyt_info(d['response']['docs'])
+            for url, dt, _id in nyt_info:
+                print(f'url:{url}\ndate:{dt}\nid:{_id}')
+                time.sleep(6)
+                yield scrapy.Request(url, callback=scrape_nyt, cb_kwargs=dict(date=dt, _id=_id))
 
 
 #   i.e the 2nd page starts at start=10, 3rd page at start=20
