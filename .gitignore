@@ -52,3 +52,10 @@ ehthumbs.db
 Thumbs.db
 
 
+/scrapy_news/cnn_ids.csv
+/scrapy_news/fox_articles.csv
+/scrapy_news/fox_ids.csv
+/scrapy_news/fox_urls.txt
+/scrapy_news/fox_urls2.txt
+/scrapy_news/sample_cnn_response.json
+/scrapy_news/sample_fox_response.rtf
