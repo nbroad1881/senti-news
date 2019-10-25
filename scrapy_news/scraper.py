@@ -143,7 +143,8 @@ def get_fox_info(res):
         dt = d['date']
         title = d['title']
         url = d['url']
-        urls.append((dt, title, url))
+        _type = d['type']
+        urls.append((dt, title, url, _type))
     return urls
 
 
