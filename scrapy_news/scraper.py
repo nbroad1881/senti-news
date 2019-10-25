@@ -204,16 +204,7 @@ def nyt():
         date_today = datetime.date.today().isoformat().replace('-', '')
         url = form_nyt_query(query=c, end_date=date_today, page=0)
         r = requests.get(url)
-        if r.status_code != 200:
-            print(f'Request failed:{r.status_code},{url}')
-            break
-        if r.status_code == 429:
-            print(f'Hit limit: {r.status_code}, sleeping')
-            while r.status_code == 429:
-                print('.', end='')
-                time.sleep(10)
-                r = requests.get(url)
-            print('Retrying')
+
         num_results = json.loads(r.text)['response']['meta']['hits']
         num_results = 1000 if num_results > 1000 else num_results
         start_urls = [form_nyt_query(query=c, end_date=date_today, page=n) for n in range(num_results // 10)]
