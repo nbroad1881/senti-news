@@ -53,8 +53,10 @@ def form_fox_query(q, min_date, max_date, start):
     max_dt = max_date
     s_4 = '&start='
     start = str(start)
-    s_5 = '&callback=angular.callbacks._0&cb=20191024112'
-    return ''.join([s_1, q, s_2, min_dt, s_3, max_dt, s_4, start, s_5])
+    s_5 = '&callback=angular.callbacks._0&cb='
+    dt_today = datetime.date.today().isoformat().replace('-', '')
+    s_6 = '112'
+    return ''.join([s_1, q, s_2, min_dt, s_3, max_dt, s_4, start, s_5, dt_today, s_6])
 
 
 # todo: writes text to file
