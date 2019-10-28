@@ -1,6 +1,8 @@
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import csv
 import json
+import numpy as np
+
 
 def analyze_text(filepath):
     analyzer = SentimentIntensityAnalyzer()
@@ -16,20 +18,25 @@ def analyze_text(filepath):
                 print(f'{counter} done', end="\r")
                 counter += 1
 
-def aggregate_scores(filepath):
 
-    scores = []
-    with open(filepath,'r') as f:
+def aggregate_scores(filepath):
+    neg = []
+    neu = []
+    pos = []
+    com = []
+    with open(filepath, 'r') as f:
         headers = f.readline()
-        count = 0
         for line in f:
             score = line[line.index('{'):-1]
-            score = score.replace("'", '"')
-            scores.append(json.loads(score))
-            if count > 5: break
-            count += 1
+            j = json.loads(score.replace("'", '"'))
+            neg.append(j['neg'])
+            neu.append(j['neu'])
+            pos.append(j['pos'])
+            com.append(j['compound'])
 
-    print(scores)
+    print(f'Out of {len(neg)} articles, the medians are neg = {np.median(neg)},'
+          f' neu = {np.median(neu)}, pos = {np.median(pos)}, and compound = {np.median(com)})')
+
 
 if __name__ == '__main__':
     aggregate_scores('sentiment_scores/cnn_sentiment_scores_vader.txt')
