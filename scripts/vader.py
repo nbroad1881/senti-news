@@ -2,10 +2,10 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import csv
 
 analyzer = SentimentIntensityAnalyzer()
-with open('cnn_sentiment_scores.txt', 'w') as s:
+with open('cnn_sentiment_scores_vader.txt', 'w') as s:
     s.write('positive sentiment: compound score >= 0.05, neutral sentiment: (compound score > -0.05) and (compound '
             'score < 0.05), negative sentiment: compound score <= -0.05\n')
-    with open('../texts/cnn_articles.csv', 'r') as f:
+    with open('../saved_texts/cnn_articles.csv', 'r') as f:
         reader = csv.reader(f)
         counter = 1
         for row in reader:
