@@ -61,3 +61,4 @@ cnn_articles.csv
 /scrapy_news/fox_urls2.txt
 /scrapy_news/sample_cnn_response.json
 /scrapy_news/sample_fox_response.rtf
+/scrapy_news/nyt_articles.csv
