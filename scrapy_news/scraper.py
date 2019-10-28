@@ -91,7 +91,7 @@ def scrape_cnn(unq_ids, _from=0, name=''):
             return
         articles = json.loads(response.text)['result']
         num_results = json.loads(response.text)['meta']['of']
-        with open('../texts/cnn_articles.csv', 'a') as f:
+        with open('../saved_texts/cnn_articles.csv', 'a') as f:
             writer = csv.writer(f)
             for a in articles:
                 if a['type'] != 'article' or a['_id'] in unq_ids:
@@ -204,7 +204,6 @@ def nyt():
         date_today = datetime.date.today().isoformat().replace('-', '')
         url = form_nyt_query(query=c, end_date=date_today, page=0)
         r = requests.get(url)
-
         num_results = json.loads(r.text)['response']['meta']['hits']
         num_results = 1000 if num_results > 1000 else num_results
         start_urls = [form_nyt_query(query=c, end_date=date_today, page=n) for n in range(num_results // 10)]
@@ -229,7 +228,10 @@ def get_nyt_info(docs):
 if __name__ == "__main__":
 
     response = input("Which news company would you like to scrape?\n"
-                     "1. CNN\n2. Fox News\n3. NYTimes\n4. All of the above\n")
+                     "1. CNN\n'\
+                     '2. Fox News\n'\
+                     '3. NYTimes\n'\
+                     '4. All of the above\n")
     if int(response) == 1:
         cnn()
     elif int(response) == 2:
