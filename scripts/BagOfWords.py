@@ -9,7 +9,7 @@ import sys
 
 
 def load_text_from_file(filepath, is_text=True):
-    """If **isText is False, treats the file as csv, parses each line."""
+    """If is_text is False, treats the file as csv and parses each line."""
     try:
         with open(filepath, 'r') as f:
             if is_text:
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         if sys.argv[1] == 'p':
             """p flag to use pickeled data"""
-            with open('../texts/pickled_matrices', 'rb') as f:
+            with open('../saved_texts/pickled_matrices', 'rb') as f:
                 [whole_doc, X_train, X_test, y_train, y_test] = pickle.load(f)
         elif sys.argv[1] == 'd':
             """d flag to dump pickled data"""
@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
         train_text = []
         for n in range(14, 26, 1):
-            train_text.append(load_text_from_file(f'../texts/text-2019-09-{n}.csv',
+            train_text.append(load_text_from_file(f'../saved_texts/text-2019-09-{n}.csv',
                                                   True))
 
         docs = list(nlp.tokenizer.pipe(train_text, batch_size=2))
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         X_train = cv.transform(docs[:-1])
         X_test = cv.transform([docs[-1]])
 
-        with open('../texts/poll_ratings_9-13-to-10-1.csv', 'r') as polls:
+        with open('../saved_texts/poll_ratings_9-13-to-10-1.csv', 'r') as polls:
             reader = csv.reader(polls)
             next(reader)  # skipping headers
             ratings = []
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         y_test = ratings[-1]
 
         if dump:
-            with open('../texts/pickled_matrices', 'wb') as f:
+            with open('../saved_texts/pickled_matrices', 'wb') as f:
                 pickle.dump([whole_doc, X_train, X_test, y_train, y_test], f)
 
     model = LinearRegression()
