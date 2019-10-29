@@ -1,43 +1,59 @@
+Article Title
+Human sentiment
+Vader [-1,1]
+TextBlob [0,1]
+
 Gillibrand open to mandatory federal buyback program for assault weapons
 Neutral
 {'neg': 0.212, 'neu': 0.737, 'pos': 0.051, 'compound': -0.999}
+polarity=0.10105519480519481, subjectivity=0.47787539258127487
 
 9 challenges Amazon faces on its 25th birthday
 Negative
 {'neg': 0.068, 'neu': 0.824, 'pos': 0.108, 'compound': 0.9856}
+polarity=0.05527674706246135, subjectivity=0.3186549165120593
 
 5 things to know for June 4: Trump, tech probes, Virginia Beach, Sudan, lost climbers
 Negative
 {'neg': 0.063, 'neu': 0.877, 'pos': 0.06, 'compound': 0.7424}
+polarity=0.08284395680947404, subjectivity=0.4103465691396726
 
 Trump admin opens door to allow drug importation from Canada
 Positive
 {'neg': 0.036, 'neu': 0.84, 'pos': 0.124, 'compound': 0.9979}
+polarity=0.130527950310559, subjectivity=0.4475744545309762
 
 New Democratic proposal offers a middle ground on Medicare expansion
 Positive
 {'neg': 0.054, 'neu': 0.792, 'pos': 0.153, 'compound': 0.999}
+polarity=0.17630303030303035, subjectivity=0.3693275613275613
 
 Trump calls impeachment inquiry a 'lynching'
 Negative
 {'neg': 0.116, 'neu': 0.815, 'pos': 0.069, 'compound': -0.9955}
+polarity=0.02769342778433687, subjectivity=0.4424124360487996
 
 GOP's narrow North Carolina victory is bad news for Trump in 2020
 Negative
 {'neg': 0.065, 'neu': 0.783, 'pos': 0.152, 'compound': 0.9929}
+polarity=0.062190282617111875, subjectivity=0.4142276422764227
 
 Takeaways from Pete Buttigieg's CNN town hall
 Negative
 {'neg': 0.068, 'neu': 0.838, 'pos': 0.094, 'compound': 0.9592}
+polarity=0.12835542929292926, subjectivity=0.49535759379509364
 
 Decreasing gun violence 'has to be a top-tier issue' in 2020 campaign, says former candidate Eric Swalwell
 Neutral
 {'neg': 0.127, 'neu': 0.812, 'pos': 0.062, 'compound': -0.9722}
+polarity=0.20945454545454545, subjectivity=0.4895714285714286
 
 Washington Post: Joe Biden conflated details of several war stories into one during town hall
 Negative
 {'neg': 0.074, 'neu': 0.844, 'pos': 0.082, 'compound': 0.6993}
+polarity=0.08847807736967893, subjectivity=0.283080808080808
 
 Mattis had problems with Trump -- and with Obama, Biden and Bush
 Negative
 {'neg': 0.137, 'neu': 0.78, 'pos': 0.083, 'compound': -0.999}
+polarity=0.07088577476445128, subjectivity=0.37001694996180284
