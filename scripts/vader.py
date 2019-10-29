@@ -34,9 +34,18 @@ def aggregate_scores(filepath):
             pos.append(j['pos'])
             com.append(j['compound'])
 
-    print(f'Out of {len(neg)} articles, the medians are neg = {np.median(neg)},'
-          f' neu = {np.median(neu)}, pos = {np.median(pos)}, and compound = {np.median(com)})')
+    neg = np.array(neg)
+    neu = np.array(neu)
+    pos = np.array(pos)
+    com = np.array(com)
+    num_neg = sum(com <= -0.05)
+    num_neu = sum(np.bitwise_and(com > -0.05, com < 0.05))
+    num_pos = sum(com >= 0.05)
 
+    print(f'Out of {len(neg)} articles:')
+    print(f'Number of positive articles: {num_pos}')
+    print(f'Number of neutral articles: {num_neu}')
+    print(f'Number of negative articles: {num_neg}')
 
 if __name__ == '__main__':
     aggregate_scores('sentiment_scores/cnn_sentiment_scores_vader.txt')
