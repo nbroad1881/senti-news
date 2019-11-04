@@ -3,12 +3,13 @@ import datetime
 import logging
 import json
 import time
+import pathlib
+from abc import ABC, abstractmethod
 
 import scrapy
 import requests
 from scrapy.crawler import CrawlerProcess
 
-CNN_RESULTS_SIZE = 100
 DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
 NYT_ARTICLES_CSV = 'nyt_articles.csv'
 CNN_ARTICLES_CSV = '../saved_texts/cnn_articles.csv'
@@ -26,17 +27,18 @@ class NewsSpider(scrapy.Spider):
 
     name = 'scrape-news'
     FOX_ARTICLES_CSV = 'fox_articles.csv'
+    article_source = None
 
-    # TODO: Do not use mutable objects as default values
-    def __init__(self, start_urls=None, unique_ids=None):
+    def __init__(self, article_source, start_urls=None):
         """
         Initialize the spider.
 
         :type start_urls: List(str)
         """
 
-        self.start_urls = [] if start_urls is None else start_urls
-        self.unique_ids = set() if unique_ids is None else unique_ids
+        self.article_source = article_source
+        # self.start_urls = [] if start_urls is None else start_urls
+        # self.unique_ids = set() if unique_ids is None else unique_ids
 
         logging.debug("Spider initialized.")
 
@@ -46,6 +48,8 @@ class NewsSpider(scrapy.Spider):
         """
 
         logging.info("Parsing started")
+
+        self.article_source.parse(response)
 
         if 'angular' in response.text[:30]:
             logging.debug("Scraping Fox info.")
@@ -63,11 +67,6 @@ class NewsSpider(scrapy.Spider):
 
         elif 'New York Times' in response.text[:100]:
             logging.debug("Scraping NYT.")
-            nyt_info = get_nyt_info(json.loads(response.text)['response']['docs'])
-            for url, dt, _id in nyt_info:
-                print(f'url:{url}\ndate:{dt}\nid:{_id}')
-                time.sleep(6)
-                yield scrapy.Request(url, callback=scrape_nyt, cb_kwargs=dict(date=dt, _id=_id))
 
         logging.info("Parsing done")
 
@@ -99,68 +98,247 @@ def form_fox_query(q, min_date, max_date, start):
 
 # TODO: Suggestion - implement a subclass for each news provider of a generic news provider interface class
 
-# import abc
-#
-# class ArticleSource:
-#
-#    @abc.abstractmethod
-#    def scrape(response):
-#        pass
+class ArticleSource(ABC):
 
-# class SchoolNewspaper(ArticleSource):
+    @abstractmethod
+    def scrape(self, response):
+        pass
+
+    @abstractmethod
+    def get_unique_ids(self):
+        pass
+
+    @abstractmethod
+    def set_unique_ids(self):
+        pass
+
+    @abstractmethod
+    def store_article(self):
+        pass
+
+    @abstractmethod
+    def form_query(self):
+        pass
 
 
-def scrape_nyt(response, date, _id):
-    # TODO: See above
-    title = response.xpath('./head/title//text()').get()
-    body = response.xpath('//section[contains(@name, "articleBody")]//text()').getall()
-    with open(NYT_ARTICLES_CSV, 'a') as file:
-        logging.debug(f'Wrote NYT article ({_id}) to file')
-        writer = csv.writer(file)
-        writer.writerow([date, title, _id, ' '.join(body)])
+class NYT(scrapy.Spider):
+    UNIQUE_IDS_PATH = pathlib.Path('NYT_unique_ids.csv')
+    ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/NYT/texts')
+    ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/NYT/info')
+    TESTING_QUERY = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?begin_date=20191001&end_date=20191031' \
+                    '&facet=true&facet_fields=document_type&fq=article&q=biden&sort=newest&api-key' \
+                    '=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7 '
 
+    custom_settings = {
+        'CONCURRENT_REQUESTS': 2,
+        'DOWNLOAD_DELAY': 6
+    }
 
-def scrape_cnn(unique_ids, _from=0, name=''):
-    # TODO: See above
-    """Searches cnn for name, saving articles that are not in the unique
-    id set. Ordered by newest, rather than by relevance. Relevance produces
-    results from 2017 first"""
+    def __init__(self):
+        self.unique_ids = self.get_unique_ids()
 
-    url = f'https://search.api.cnn.io/content?size={CNN_RESULTS_SIZE}' \
-          f'&q={name}&type=article&sort=newest&from={str(_from)}'
-    response = requests.get(url)
+    @staticmethod
+    def ask_for_query():
+        query = input('What is the query? (e.g. biden, sanders, warren): ')
+        begin_date = input('What is the oldest date? (YYYYMMDD): ')
+        end_date = input('What is the newest date? (YYYYMMDD): ')
+        return query, begin_date, end_date
 
-    if response.status_code == 200:
-        print(f'Request accepted ({name}), from={_from}')
-        if _from > 1000:
-            return
-        articles = json.loads(response.text)['result']
-        num_results = json.loads(response.text)['meta']['of']
+    def start_requests(self):
+        query, begin_date, end_date = self.ask_for_query()
+        all_urls = []
+        all_info = []
+        for p in range(10):
+            api_url = self.form_query(query=query, page=p, begin_date=begin_date, end_date=end_date)
+            urls, info = self.make_api_call(api_url)
 
-        with open(CNN_ARTICLES_CSV, 'a') as f:
-            writer = csv.writer(f)
-            for a in articles:
-                if a['type'] != 'article' or a['_id'] in unique_ids:
+            if urls is not None:
+                all_urls.extend(urls)
+                all_info.extend(info)
+
+        for url, info in zip(all_urls, all_info):
+            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(id_=info['id']))
+
+    def parse(self, response, id_):
+        # todo: check for bad responses
+        body = ' '.join(response.xpath('//section[contains(@name, "articleBody")]//text()').getall())
+        self.store_article(body, id_)
+        self.set_unique_ids()
+
+    def make_api_call(self, api_url):
+        logging.debug(f'api_url:{api_url}')
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            start_urls = []
+            info = []
+            for doc in json.loads(response.text)['response']['docs']:
+                url = doc['web_url']
+                date = doc['pub_date']
+                id_ = doc['_id']
+                title = doc['headline']['main']
+                doc_type = doc['document_type']
+                source = doc['source']
+                material_type = doc['type_of_material']
+
+                # Id has many slashes that are unnecessary and make storing files harder
+                id_ = id_[id_.rindex('/') + 1:]
+                if id_ in self.unique_ids:
                     continue
-                writer.writerow([a['firstPublishDate'], a['headline'], a['url'], a['_id'], a['body']])
-                unique_ids.add(a['_id'])
+                self.unique_ids.add(id_)
 
-        if _from + CNN_RESULTS_SIZE < num_results:
-            scrape_cnn(unique_ids, _from=_from + CNN_RESULTS_SIZE, name=name)
+                start_urls.append(url)
+                info.append({
+                    'url': url,
+                    'date': date,
+                    'id': id_,
+                    'title': title,
+                    'doc_type': doc_type,
+                    'source': source,
+                    'material_type': material_type
+                })
+
+                logging.debug(f'url:{url}\n'
+                              f'date:{date}\n'
+                              f'id:{id_}\n'
+                              f'title:{title}\n'
+                              f'doc_type:{doc_type}\n'
+                              f'source:{source}\n'
+                              f'material_type:{material_type}\n')
+            return start_urls, info
+        logging.debug(f'Response status code:{response.status_code}')
+        return None, None
+
+    def get_unique_ids(self):
+        try:
+            with open(self.UNIQUE_IDS_PATH, 'r') as file:
+                reader = csv.reader(file)
+                return set(next(reader))
+        except FileNotFoundError:
+            logging.debug('No unique id file, return empty set')
+            return set()
+
+    def set_unique_ids(self):
+        with open(self.UNIQUE_IDS_PATH, 'w') as file:
+            writer = csv.writer(file)
+            writer.writerow(list(self.unique_ids))
+
+    def store_article(self, text, id_):
+        with open(self.ARTICLE_TEXT_PATH / f'{id_}.txt', 'w') as file:
+            file.write(text)
+
+    def store_info(self, info):
+        with open(self.ARTICLE_INFO_PATH, 'a') as file:
+            logging.debug(f'Wrote NYT article ({info["id"]}) to file')
+            writer = csv.writer(file)
+            writer.writerow([info['url'],
+                             info['date'],
+                             info['id'],
+                             info['title'],
+                             info['doc_type'],
+                             info['source'],
+                             info['material_type']])
+
+    @staticmethod
+    def form_query(query, page, begin_date='20190301', end_date='20191001', sort='newest'):
+        return ''.join([f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}',
+                        f'&facet=true&page={str(page)}&begin_date={begin_date}&end_date={end_date}',
+                        f'&facet_fields=document_type&fq=article',
+                        f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'])
 
 
-def get_unique_cnn_ids():
-    """Returns a set of unique cnn article ids"""
-    try:
-        with open('cnn_ids.csv', 'r') as f:
-            reader = csv.reader(f)
-            ids = set()
-            for row in reader:
-                ids.update(row)
-            return ids
-    except FileNotFoundError:
-        print('cnn_ids.csv does not exist yet, returning empty set')
-        return set()
+class CNN(scrapy.Spider):
+    UNIQUE_IDS_PATH = pathlib.Path('CNN_unique_ids.csv')
+    ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/CNN/texts')
+    ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/CNN/text_info')
+    CNN_RESULTS_SIZE = 100
+
+    # TESTING_QUERY = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?begin_date=20191001&end_date=20191031' \
+    #                 '&facet=true&facet_fields=document_type&fq=article&q=biden&sort=newest&api-key' \
+    #                 '=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7 '
+
+    def __init__(self):
+        self.unique_ids = self.get_unique_ids()
+
+    @staticmethod
+    def ask_for_query():
+        query = input('What is the query? (e.g. biden, sanders, warren): ')
+        return query
+
+    def start_requests(self):
+        query = self.ask_for_query()
+        api_url = self.form_query(query, page=1)
+        num_results = self.make_api_call(api_url)
+
+        for p in range(1, num_results // self.CNN_RESULTS_SIZE):
+            url = self.form_query(query, page=p)
+            yield scrapy.Request(url=url, callback=self.parse)
+
+    def parse(self, response):
+
+        articles = json.loads(response.text)['result']
+        for a in articles:
+            if a['type'] != 'article' or a['_id'] in self.unique_ids:
+                continue
+            info = {
+                "date": a['firstPublishDate'],
+                "title": a['headline'],
+                "url": a['url'],
+                'id': a['_id']
+            }
+            self.unique_ids.add(info['id'])
+            self.store_article(a['body'], info['id'])
+            self.store_info(info)
+            self.set_unique_ids()
+
+    def make_api_call(self, api_url):
+        """
+        Calls CNN API and returns the number of results.
+        Using requests library would be sufficient, but for
+        consistency Scrapy will be used.
+        :param api_url:
+        :return:
+        """
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            logging.debug('Request accepted (200)')
+            return json.loads(response.text)['meta']['of']
+        else:
+            logging.debug(f'Request denied ({response.status_code})')
+
+    def get_unique_ids(self):
+        """
+        Ids should be comma delimited with no line breaks
+        :return: set of ids or empty set if file not found
+        """
+        try:
+            with open(self.UNIQUE_IDS_PATH, 'r') as file:
+                reader = csv.reader(file)
+                return set(next(reader))
+        except FileNotFoundError:
+            logging.debug('No unique id file, return empty set')
+            return set()
+
+    def set_unique_ids(self):
+        with open(self.UNIQUE_IDS_PATH, 'w') as file:
+            writer = csv.writer(file)
+            writer.writerow(list(self.unique_ids))
+
+    def store_article(self, text, id_):
+        with open(self.ARTICLE_TEXT_PATH / f'{id_}.txt', 'w') as file:
+            file.write(text)
+
+    def store_info(self, info):
+        with open(self.ARTICLE_INFO_PATH / "CNN_INFO.csv", 'a') as file:
+            logging.debug(f'Wrote CNN article ({info["id"]}) to file')
+            writer = csv.writer(file)
+            writer.writerow([info['url'],
+                             info['date'],
+                             info['id'],
+                             info['title']])
+
+    def form_query(self, query, page):
+        return f'https://search.api.cnn.io/content?size={self.CNN_RESULTS_SIZE}' \
+               f'&q={query}&type=article&sort=relevance&page={page}&from={str(page * self.CNN_RESULTS_SIZE)}'
 
 
 def get_unique_fox_ids():
@@ -178,14 +356,6 @@ def get_unique_fox_ids():
     except FileNotFoundError:
         print('fox_ids.csv does not exist yet, returning empty set')
         return set()
-
-
-def set_unique_cnn_ids(unique_ids):
-    """Stores the unique article ids in a csv
-    Always overwrites"""
-    with open('cnn_ids.csv', 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(list(unique_ids))
 
 
 def set_unique_fox_ids(unique_ids):
@@ -206,13 +376,6 @@ def get_fox_info(res):
         _type = d['type']
         urls.append((dt, title, url, _type))
     return urls
-
-
-def cnn():
-    cnn_ids = get_unique_cnn_ids()
-    for c in DEM_CANDIDATES:
-        scrape_cnn(unique_ids=cnn_ids, name=c)
-    set_unique_cnn_ids(cnn_ids)
 
 
 def fox_news():
@@ -236,54 +399,23 @@ def fox_news():
         set_unique_fox_ids(unique_ids)
 
 
-def form_nyt_query(query, page, begin_date='20190301', end_date='20191001', sort='newest'):
-    # TODO: this can be a one-liner!
-    return ''.join([f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}',
-                    f'&face=true&page={str(page)}&begin_date={begin_date}&end_date={end_date}',
-                    f'fq=document_type%3Aarticle%20AND%20type_of_material%3ANews',
-                    f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'])
-
-
-# todo: have parameter be how many days back from today
-#   the search should be. subtract from datetime object
-def nyt():
-    for c in DEM_CANDIDATES:
-        date_today = datetime.date.today().isoformat().replace('-', '')
-        url = form_nyt_query(query=c, end_date=date_today, page=0)
-        r = requests.get(url)
-        num_results = json.loads(r.text)['response']['meta']['hits']
-        num_results = 1000 if num_results > 1000 else num_results
-        start_urls = [form_nyt_query(query=c, end_date=date_today, page=n) for n in range(num_results // 10)]
-        process = CrawlerProcess(settings={
-            'CONCURRENT_REQUESTS': 2,
-            'DOWNLOAD_DELAY': 6
-        })
-        process.crawl(NewsSpider, start_urls=start_urls)
-        process.start()
-
-
-def get_nyt_info(docs):
-    info = []
-    for d in docs:
-        url = d['web_url']
-        dt = d['pub_date']
-        _id = d['_id']
-        info.append((url, dt, _id))
-    return info
-
-
 if __name__ == "__main__":
 
     response = input("Which news company would you like to scrape?\n"
                      "1. CNN\n"
                      "2. Fox News\n"
                      "3. NYTimes\n"
-                     "4. All of the above\n")
+                     "4. (in future) Debug Mode\n")
+    process = CrawlerProcess()
     if int(response) == 1:
-        cnn()
+        process.crawl(CNN)
     elif int(response) == 2:
         fox_news()
     elif int(response) == 3:
-        nyt()
-    elif int(response) == 4:
+        process.crawl(NYT)
+    else:
+        pass
+    try:
+        process.start()
+    finally:
         pass
