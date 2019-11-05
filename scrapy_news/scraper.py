@@ -1,8 +1,6 @@
 import csv
-import datetime
 import logging
 import json
-import time
 import pathlib
 from abc import ABC, abstractmethod
 
@@ -20,92 +18,21 @@ logging.basicConfig(level=logging.INFO)
 # todo: have an interactive query
 #     database for text documents
 
-class NewsSpider(scrapy.Spider):
-    """
-    Spider to grab news article text.
-    """
-
-    name = 'scrape-news'
-    FOX_ARTICLES_CSV = 'fox_articles.csv'
-    article_source = None
-
-    def __init__(self, article_source, start_urls=None):
-        """
-        Initialize the spider.
-
-        :type start_urls: List(str)
-        """
-
-        self.article_source = article_source
-        # self.start_urls = [] if start_urls is None else start_urls
-        # self.unique_ids = set() if unique_ids is None else unique_ids
-
-        logging.debug("Spider initialized.")
-
-    def parse(self, response):
-        """
-        Parses the response and yields Request objects.
-        """
-
-        logging.info("Parsing started")
-
-        self.article_source.parse(response)
-
-        if 'angular' in response.text[:30]:
-            logging.debug("Scraping Fox info.")
-            fox_info = get_fox_info(json.loads(response.text[21:-1])['response'])
-
-            for date, title, url, id_ in fox_info:
-                if url[0] in self.unique_ids or id_ != 'article':
-                    continue
-                yield scrapy.Request(
-                    url[0],
-                    callback=self.scrape_fox,
-                    cb_kwargs=dict(date=date, title=title)
-                )
-                self.unique_ids.add(url[0])
-
-        elif 'New York Times' in response.text[:100]:
-            logging.debug("Scraping NYT.")
-
-        logging.info("Parsing done")
-
-    def scrape_fox(self, response, date='', title=''):
-        """
-        #TODO
-        """
-
-        with open(self.FOX_ARTICLES_CSV, 'a') as f:
-            writer = csv.writer(f)
-
-            article_text = ' '.join(response.xpath(
-                '//div[(@class="article-body")]//p/text()|'
-                '//div[@class="article-body"]//p/a/text()'
-            ).getall())
-
-            writer.writerow([date, title, article_text])
-
-
-#   i.e the 2nd page starts at start=10, 3rd page at start=20
-def form_fox_query(q, min_date, max_date, start):
-    return ''.join([
-        f'https://api.foxnews.com/v1/content/search?q={q}',
-        f'&fields=date,description,title,url,image,type,taxonomy&section.path=fnc&type=article&min_date={min_date}',
-        f'&max_date={max_date}&start={str(start)}&callback=angular.callbacks._0&cb=',
-        datetime.date.today().isoformat().replace('-', ''),
-        '112'])
-
 
 # TODO: Suggestion - implement a subclass for each news provider of a generic news provider interface class
 
 class ArticleSource(ABC):
 
     @abstractmethod
-    def scrape(self, response):
+    def ask_for_query(self):
         pass
 
     @abstractmethod
     def get_unique_ids(self):
+        pass
+
+    @abstractmethod
+    def make_api_call(self):
         pass
 
     @abstractmethod
@@ -117,21 +44,27 @@ class ArticleSource(ABC):
         pass
 
     @abstractmethod
+    def store_info(self):
+        pass
+
+    @abstractmethod
     def form_query(self):
         pass
 
 
-class NYT(scrapy.Spider):
-    UNIQUE_IDS_PATH = pathlib.Path('NYT_unique_ids.csv')
+class NYT(scrapy.Spider, ArticleSource):
+    UNIQUE_IDS_PATH = pathlib.Path('')
+    UNIQUE_IDS_FILE_NAME = "NYT_unique_ids.csv"
     ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/NYT/texts')
     ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/NYT/info')
+    INFO_FILE_NAME = "NYT_INFO.csv"
     TESTING_QUERY = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?begin_date=20191001&end_date=20191031' \
                     '&facet=true&facet_fields=document_type&fq=article&q=biden&sort=newest&api-key' \
                     '=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7 '
 
     custom_settings = {
         'CONCURRENT_REQUESTS': 2,
-        'DOWNLOAD_DELAY': 6
+        'DOWNLOAD_DELAY': 2
     }
 
     def __init__(self):
@@ -159,6 +92,7 @@ class NYT(scrapy.Spider):
         for url, info in zip(all_urls, all_info):
             yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(id_=info['id']))
 
+    # todo: not violate LSP
     def parse(self, response, id_):
         # todo: check for bad responses
         body = ' '.join(response.xpath('//section[contains(@name, "articleBody")]//text()').getall())
@@ -209,25 +143,32 @@ class NYT(scrapy.Spider):
         return None, None
 
     def get_unique_ids(self):
-        try:
-            with open(self.UNIQUE_IDS_PATH, 'r') as file:
+        if not self.UNIQUE_IDS_PATH.is_dir():
+            self.UNIQUE_IDS_PATH.mkdir()
+        elif (self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_PATH).is_file():
+            with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'r') as file:
                 reader = csv.reader(file)
                 return set(next(reader))
-        except FileNotFoundError:
-            logging.debug('No unique id file, return empty set')
-            return set()
+        logging.debug('No unique id file, return empty set')
+        return set()
 
     def set_unique_ids(self):
-        with open(self.UNIQUE_IDS_PATH, 'w') as file:
+        with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'w') as file:
             writer = csv.writer(file)
             writer.writerow(list(self.unique_ids))
 
     def store_article(self, text, id_):
+        if not self.ARTICLE_TEXT_PATH.is_dir():
+            logging.debug(f'Making directory {self.ARTICLE_TEXT_PATH}')
+            self.ARTICLE_TEXT_PATH.mkdir(parents=True)
         with open(self.ARTICLE_TEXT_PATH / f'{id_}.txt', 'w') as file:
             file.write(text)
 
     def store_info(self, info):
-        with open(self.ARTICLE_INFO_PATH, 'a') as file:
+        if not self.ARTICLE_INFO_PATH.is_dir():
+            logging.debug(f'Making directory {self.ARTICLE_INFO_PATH}')
+            self.ARTICLE_INFO_PATH.mkdir(parents=True)
+        with open(self.ARTICLE_INFO_PATH / self.INFO_FILE_NAME, 'a') as file:
             logging.debug(f'Wrote NYT article ({info["id"]}) to file')
             writer = csv.writer(file)
             writer.writerow([info['url'],
@@ -246,15 +187,11 @@ class NYT(scrapy.Spider):
                         f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'])
 
 
-class CNN(scrapy.Spider):
+class CNN(scrapy.Spider, ArticleSource):
     UNIQUE_IDS_PATH = pathlib.Path('CNN_unique_ids.csv')
     ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/CNN/texts')
     ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/CNN/text_info')
-    CNN_RESULTS_SIZE = 100
-
-    # TESTING_QUERY = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?begin_date=20191001&end_date=20191031' \
-    #                 '&facet=true&facet_fields=document_type&fq=article&q=biden&sort=newest&api-key' \
-    #                 '=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7 '
+    RESULTS_SIZE = 100
 
     def __init__(self):
         self.unique_ids = self.get_unique_ids()
@@ -269,7 +206,7 @@ class CNN(scrapy.Spider):
         api_url = self.form_query(query, page=1)
         num_results = self.make_api_call(api_url)
 
-        for p in range(1, num_results // self.CNN_RESULTS_SIZE):
+        for p in range(1, num_results // self.RESULTS_SIZE):
             url = self.form_query(query, page=p)
             yield scrapy.Request(url=url, callback=self.parse)
 
@@ -341,62 +278,138 @@ class CNN(scrapy.Spider):
                f'&q={query}&type=article&sort=relevance&page={page}&from={str(page * self.CNN_RESULTS_SIZE)}'
 
 
-def get_unique_fox_ids():
-    """Returns a set of unique fox article ids.
-    There are no actual id tag for fox articles,
-    so this treats each url as a unique id
-    """
-    try:
-        with open('fox_ids.csv', 'r') as f:
-            reader = csv.reader(f)
-            ids = set()
-            for row in reader:
-                ids.update(row)
-            return ids
-    except FileNotFoundError:
-        print('fox_ids.csv does not exist yet, returning empty set')
+class FOX(scrapy.Spider, ArticleSource):
+    UNIQUE_IDS_PATH = pathlib.Path('')
+    UNIQUE_IDS_FILE_NAME = 'FOX_UNIQUE_IDS.csv'
+    ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/FOX/texts')
+    ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/FOX/text_info')
+    INFO_FILE_NAME = "FOX_INFO.csv"
+    PAGE_SIZE = 10
+    NUM_PAGES = 10
+    TEST_QUERY = 'https://api.foxnews.com/v1/content/search?q=biden&fields=date,description,title,url,image,type,' \
+                 'taxonomy&section.path=fnc&type=article&min_date=2019-10-10&max_date=2019-10-10&start=0&callback' \
+                 '=angular.callbacks._0&cb=112 '
+
+
+    def __init__(self):
+        self.unique_ids = self.get_unique_ids()
+
+    @staticmethod
+    def ask_for_query():
+        query = input('What is the query? (e.g. biden, sanders, warren): ')
+        begin_date = input('What is the oldest date? (YYYYMMDD): ')
+        begin_date = '-'.join([begin_date[:4], begin_date[4:6], begin_date[6:8]])
+        end_date = input('What is the newest date? (YYYYMMDD): ')
+        end_date = '-'.join([end_date[:4], end_date[4:6], end_date[6:8]])
+        return query, begin_date, end_date
+
+    def start_requests(self):
+        query, min_date, max_date = self.ask_for_query()
+
+        all_urls, all_info = [], []
+        for start in range(0,
+                           self.PAGE_SIZE * self.NUM_PAGES,
+                           self.PAGE_SIZE):
+            api_url = self.form_query(query, min_date=min_date, max_date=max_date, start=start)
+            urls, info = self.make_api_call(api_url)
+
+            all_urls.extend(urls)
+            all_info.extend(info)
+
+        for url, info in zip(all_urls, all_info):
+            self.store_info(info)
+            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(id_=info['id']))
+
+    def parse(self, response, id_):
+        article_text = ' '.join(response.xpath(
+            '//div[(@class="article-body")]//p/text()|'
+            '//div[@class="article-body"]//p/a/text()'
+        ).getall())
+        self.store_article(article_text, id_)
+        self.set_unique_ids()
+
+    def make_api_call(self, api_url):
+        """
+        Calls FOX API .
+        Using the requests library would be sufficient, but for
+        consistency Scrapy will be used. Requests used once to get
+        the urls and info.
+        :param api_url:
+        :return:
+        """
+        response = requests.get(api_url)
+        logging.debug(f'get request: {api_url}')
+        if response.status_code == 200:
+            logging.debug('Request accepted (200)')
+            urls, infos = [], []
+
+            text = json.loads(response.text[21:-1])['response']
+            logging.debug('Request accepted (200)')
+            for d in text['docs']:
+                info = {
+                    'date': d['date'],
+                    'title': d['title'],
+                    'url': d['url'][0],
+                    'type_': d['type'],
+                    'id': d['date']
+                }
+                if info['id'] in self.unique_ids:
+                    continue
+
+                self.unique_ids.add(info['id'])
+
+                urls.append(info['url'])
+                infos.append(info)
+            logging.debug(f'returning urls_ids:{urls}\n{infos}')
+            return urls, infos
+        else:
+            logging.debug(f'Request denied ({response.status_code})')
+            return None
+
+    def get_unique_ids(self):
+        """
+        Ids should be comma delimited with no line breaks
+        :return: set of ids or empty set if file not found
+        """
+        if not self.UNIQUE_IDS_PATH.is_dir():
+            self.UNIQUE_IDS_PATH.mkdir()
+        elif (self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_PATH).is_file():
+            with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'r') as file:
+                reader = csv.reader(file)
+                return set(next(reader))
+        logging.debug('No unique id file, return empty set')
         return set()
 
+    def set_unique_ids(self):
+        with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'w') as file:
+            writer = csv.writer(file)
+            writer.writerow(list(self.unique_ids))
 
-def set_unique_fox_ids(unique_ids):
-    """Stores the unique article urls in a csv
-    Always overwrites"""
-    with open('fox_ids.csv', 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(list(unique_ids))
+    def store_article(self, text, id_):
+        if not self.ARTICLE_TEXT_PATH.is_dir():
+            logging.debug(f'Making directory {self.ARTICLE_TEXT_PATH}')
+            self.ARTICLE_TEXT_PATH.mkdir(parents=True)
+        with open(self.ARTICLE_TEXT_PATH / f'{id_}.txt', 'w') as file:
+            file.write(text)
 
+    def store_info(self, info):
+        if not self.ARTICLE_INFO_PATH.is_dir():
+            logging.debug(f'Making directory {self.ARTICLE_INFO_PATH}')
+            self.ARTICLE_INFO_PATH.mkdir(parents=True)
+        with open(self.ARTICLE_INFO_PATH / self.INFO_FILE_NAME, 'a') as file:
+            logging.debug(f'Wrote Fox info ({info["id"]}) to file')
+            writer = csv.writer(file)
+            writer.writerow([info['url'],
+                             info['date'],
+                             info['title']])
 
-def get_fox_info(res):
-    """Pulls date, title, and url from API response"""
-    urls = []
-    for d in res['docs']:
-        dt = d['date']
-        title = d['title']
-        url = d['url']
-        _type = d['type']
-        urls.append((dt, title, url, _type))
-    return urls
-
-
-def fox_news():
-    dt_today = datetime.date.today().isoformat()
-
-    unique_ids = get_unique_fox_ids()
-    try:
-        for c in DEM_CANDIDATES:
-            start = form_fox_query('biden', '2019-01-01', dt_today, 0)
-            r = requests.get(start).text
-            j = json.loads(r[21:-1])
-            num_results = j['response']['numFound']
-            num_results = 1000 if num_results > 1000 else num_results
-            start_urls = [form_fox_query(c, '2019-03-01', dt_today, n) for n in range(0, num_results, 10)]
-            process = CrawlerProcess()
-            process.crawl(NewsSpider, start_urls=start_urls, unique_ids=unique_ids)
-            process.start()
-            set_unique_fox_ids(unique_ids)
-    except Exception as e:
-        print(e)
-        set_unique_fox_ids(unique_ids)
+    @staticmethod
+    def form_query(query, min_date, max_date, start):
+        return ''.join([f'https://api.foxnews.com/v1/content/search?q={query}',
+                        f'&fields=date,description,title,url,image,type,taxonomy',
+                        f'&section.path=fnc&type=article&min_date={min_date}',
+                        f'&max_date={max_date}&start={start}&callback=angular.callbacks._0&cb=',
+                        '112'])
 
 
 if __name__ == "__main__":
@@ -410,7 +423,7 @@ if __name__ == "__main__":
     if int(response) == 1:
         process.crawl(CNN)
     elif int(response) == 2:
-        fox_news()
+        process.crawl(FOX)
     elif int(response) == 3:
         process.crawl(NYT)
     else:
