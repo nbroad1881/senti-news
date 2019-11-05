@@ -24,15 +24,15 @@ def aggregate_scores(filepath):
     with open(filepath, 'r') as f:
         headers = f.readline()
         for line in f:
-            score = line[line.index('ity=')+4:-1]
+            score = line[line.index('ity=') + 4:-1]
             positivity = float(score[:score.index(',')])
-            subjectivity = float(score[score.index('ctivity=')+8:-1])
+            subjectivity = float(score[score.index('ctivity=') + 8:-1])
             pos.append(positivity)
             sub.append(subjectivity)
 
     sub = np.array(sub)
     pos = np.array(pos)
-    print(type(pos),pos[:10])
+    print(type(pos), pos[:10])
     num_neg = sum(pos <= -0.1)
     num_neu = sum(np.bitwise_and(sub > -0.1, sub < 0.1))
     num_pos = sum(sub >= 0.1)
@@ -46,5 +46,8 @@ def aggregate_scores(filepath):
 
 
 if __name__ == '__main__':
-    # analyze_text('../saved_texts/cnn_articles.csv', 'base_textblob_sentiment_cnn.txt')
-    aggregate_scores('sentiment_scores/cnn_sentiment_scores_base_textblob.txt')
+    choice = input('1. Analyze\n2. Aggregate\n')
+    if choice == '1':
+        analyze_text('../saved_texts/cnn_articles.csv', 'cnn_sentiment_scores_base_textblob.txt')
+    elif choice == '2':
+        aggregate_scores('sentiment_scores/cnn_sentiment_scores_base_textblob.txt')
