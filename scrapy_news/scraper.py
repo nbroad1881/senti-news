@@ -15,7 +15,6 @@ logging.basicConfig(level=logging.INFO)
 #     database for text documents
 
 class ArticleSource(ABC):
-
     DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
 
     @abstractmethod
@@ -48,8 +47,8 @@ class ArticleSource(ABC):
 
 
 class NYT(scrapy.Spider, ArticleSource):
-    UNIQUE_IDS_PATH = pathlib.Path('')
-    UNIQUE_IDS_FILE_NAME = "NYT_unique_ids.csv"
+    UNIQUE_IDS_PATH = pathlib.Path('')  # empty but implemented in functions to allow for each changes in future
+    UNIQUE_IDS_FILE_NAME = "NYT_UNIQUE_IDS.csv"
     ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/NYT/texts')
     ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/NYT/info')
     INFO_FILE_NAME = "NYT_INFO.csv"
@@ -183,8 +182,8 @@ class NYT(scrapy.Spider, ArticleSource):
 
 
 class CNN(scrapy.Spider, ArticleSource):
-    UNIQUE_IDS_PATH = pathlib.Path('')
-    UNIQUE_IDS_FILE_NAME = "CNN_unique_ids.csv"
+    UNIQUE_IDS_PATH = pathlib.Path('')  # empty but implemented in functions to allow for each changes in future
+    UNIQUE_IDS_FILE_NAME = "CNN_UNIQUE_IDS.csv"
     ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/CNN/texts')
     ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/CNN/text_info')
     INFO_FILE_NAME = "CNN_INFO.csv"
@@ -284,7 +283,7 @@ class CNN(scrapy.Spider, ArticleSource):
 
 
 class FOX(scrapy.Spider, ArticleSource):
-    UNIQUE_IDS_PATH = pathlib.Path('')
+    UNIQUE_IDS_PATH = pathlib.Path('')  # empty but implemented in functions to allow for each changes in future
     UNIQUE_IDS_FILE_NAME = 'FOX_UNIQUE_IDS.csv'
     ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/FOX/texts')
     ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/FOX/text_info')
