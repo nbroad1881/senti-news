@@ -8,20 +8,15 @@ import scrapy
 import requests
 from scrapy.crawler import CrawlerProcess
 
-DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
-NYT_ARTICLES_CSV = 'nyt_articles.csv'
-CNN_ARTICLES_CSV = '../saved_texts/cnn_articles.csv'
-
 logging.basicConfig(level=logging.INFO)
 
 
 # todo: have an interactive query
 #     database for text documents
 
-
-# TODO: Suggestion - implement a subclass for each news provider of a generic news provider interface class
-
 class ArticleSource(ABC):
+
+    DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
 
     @abstractmethod
     def ask_for_query(self):
@@ -188,10 +183,13 @@ class NYT(scrapy.Spider, ArticleSource):
 
 
 class CNN(scrapy.Spider, ArticleSource):
-    UNIQUE_IDS_PATH = pathlib.Path('CNN_unique_ids.csv')
+    UNIQUE_IDS_PATH = pathlib.Path('')
+    UNIQUE_IDS_FILE_NAME = "CNN_unique_ids.csv"
     ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/CNN/texts')
     ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/CNN/text_info')
+    INFO_FILE_NAME = "CNN_INFO.csv"
     RESULTS_SIZE = 100
+    TESTING_QUERY = "https://search.api.cnn.io/content?size=20&q=biden&type=article&sort=relevance&page=0&from=0"
 
     def __init__(self):
         self.unique_ids = self.get_unique_ids()
@@ -247,25 +245,32 @@ class CNN(scrapy.Spider, ArticleSource):
         Ids should be comma delimited with no line breaks
         :return: set of ids or empty set if file not found
         """
-        try:
-            with open(self.UNIQUE_IDS_PATH, 'r') as file:
+        if not self.UNIQUE_IDS_PATH.is_dir():
+            self.UNIQUE_IDS_PATH.mkdir()
+        elif (self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_PATH).is_file():
+            with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'r') as file:
                 reader = csv.reader(file)
                 return set(next(reader))
-        except FileNotFoundError:
-            logging.debug('No unique id file, return empty set')
-            return set()
+        logging.debug('No unique id file, return empty set')
+        return set()
 
     def set_unique_ids(self):
-        with open(self.UNIQUE_IDS_PATH, 'w') as file:
+        with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'w') as file:
             writer = csv.writer(file)
             writer.writerow(list(self.unique_ids))
 
     def store_article(self, text, id_):
+        if not self.ARTICLE_TEXT_PATH.is_dir():
+            logging.debug(f'Making directory {self.ARTICLE_TEXT_PATH}')
+            self.ARTICLE_TEXT_PATH.mkdir(parents=True)
         with open(self.ARTICLE_TEXT_PATH / f'{id_}.txt', 'w') as file:
             file.write(text)
 
     def store_info(self, info):
-        with open(self.ARTICLE_INFO_PATH / "CNN_INFO.csv", 'a') as file:
+        if not self.ARTICLE_INFO_PATH.is_dir():
+            logging.debug(f'Making directory {self.ARTICLE_INFO_PATH}')
+            self.ARTICLE_INFO_PATH.mkdir(parents=True)
+        with open(self.ARTICLE_INFO_PATH / self.INFO_FILE_NAME, 'a') as file:
             logging.debug(f'Wrote CNN article ({info["id"]}) to file')
             writer = csv.writer(file)
             writer.writerow([info['url'],
@@ -286,10 +291,9 @@ class FOX(scrapy.Spider, ArticleSource):
     INFO_FILE_NAME = "FOX_INFO.csv"
     PAGE_SIZE = 10
     NUM_PAGES = 10
-    TEST_QUERY = 'https://api.foxnews.com/v1/content/search?q=biden&fields=date,description,title,url,image,type,' \
-                 'taxonomy&section.path=fnc&type=article&min_date=2019-10-10&max_date=2019-10-10&start=0&callback' \
-                 '=angular.callbacks._0&cb=112 '
-
+    TESTING_QUERY = 'https://api.foxnews.com/v1/content/search?q=biden&fields=date,description,title,url,image,type,' \
+                    'taxonomy&section.path=fnc&type=article&min_date=2019-10-10&max_date=2019-10-10&start=0&callback' \
+                    '=angular.callbacks._0&cb=112 '
 
     def __init__(self):
         self.unique_ids = self.get_unique_ids()
@@ -414,17 +418,17 @@ class FOX(scrapy.Spider, ArticleSource):
 
 if __name__ == "__main__":
 
-    response = input("Which news company would you like to scrape?\n"
-                     "1. CNN\n"
-                     "2. Fox News\n"
-                     "3. NYTimes\n"
-                     "4. (in future) Debug Mode\n")
+    choice = input("Which news company would you like to scrape?\n"
+                   "1. CNN\n"
+                   "2. Fox News\n"
+                   "3. NYTimes\n"
+                   "4. (in future) Debug Mode\n")
     process = CrawlerProcess()
-    if int(response) == 1:
+    if int(choice) == 1:
         process.crawl(CNN)
-    elif int(response) == 2:
+    elif int(choice) == 2:
         process.crawl(FOX)
-    elif int(response) == 3:
+    elif int(choice) == 3:
         process.crawl(NYT)
     else:
         pass
