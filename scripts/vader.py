@@ -77,33 +77,46 @@ def get_score_counts(scores):
     :return: None
     """
 
-def aggregate_scores(filepath):
-    neg = []
-    neu = []
-    pos = []
-    com = []
-    with open(filepath, 'r') as f:
-        headers = f.readline()
-        for line in f:
-            score = line[line.index('{'):-1]
-            j = json.loads(score.replace("'", '"'))
-            neg.append(j['neg'])
-            neu.append(j['neu'])
-            pos.append(j['pos'])
-            com.append(j['compound'])
+    compound = np.array([score['compound'] for score in scores])
+    num_negative_scores = sum(compound <= -0.05)
+    num_neutral_scores = sum(np.bitwise_and(compound > -0.05, compound < 0.05))
+    num_positive_scores = sum(compound >= 0.05)
 
-    neg = np.array(neg)
-    neu = np.array(neu)
-    pos = np.array(pos)
-    com = np.array(com)
-    num_neg = sum(com <= -0.05)
-    num_neu = sum(np.bitwise_and(com > -0.05, com < 0.05))
-    num_pos = sum(com >= 0.05)
+    print(f'Out of {len(compound)} texts:\n'
+          f'Number of positive articles: {num_positive_scores}\n'
+          f'Number of neutral articles: {num_neutral_scores}\n'
+          f'Number of negative articles: {num_negative_scores}')
 
-    print(f'Out of {len(neg)} articles:')
-    print(f'Number of positive articles: {num_pos}')
-    print(f'Number of neutral articles: {num_neu}')
-    print(f'Number of negative articles: {num_neg}')
+def to_integer_labels(scores):
+    integer_labels = []
+    for score in scores:
+        if score['compound'] <= -0.05:
+            integer_labels.append(-1)
+        elif score['compound'] > -0.05 and  score['compound'] < 0.05:
+            integer_labels.append(0)
+        elif score['compound'] > 0.05:
+            integer_labels.append(1)
+        else:  # this should hopefully never happen
+            integer_labels.append(None)
+    return integer_labels
+
+
+def scores_to_csv(filepath, scores):
+    """
+    Adds a column of compound scores labelled with the date
+    to the csv.
+    :param filepath: path to csv
+    :param scores: list of scores
+    :return: None
+    """
+    with open(filepath, 'w') as file:
+        reader = csv.reader(file)
+        writer = csv.writer(file)
+        for index, row in enumerate(reader):
+            logging.debug(f'Added score to row {index}')
+            date = datetime.date.today().isoformat()
+            new_col = f'VADER({date}):{scores[index]["compound"]}'
+            writer.writerow(row + [new_col])
 
 
 if __name__ == '__main__':
