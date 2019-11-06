@@ -3,19 +3,18 @@ import csv
 import numpy as np
 
 
-def analyze_text(in_filepath, out_filepath):
-    with open(out_filepath, 'w') as s:
-        s.write(
-            'Made with base sentiment function in Textblob. Contains polarity and subjectivity of text. Polarity goes'
-            'from [-1,1] and subjectivity goes from [0,1]\n')
-        with open(in_filepath, 'r') as f:
-            reader = csv.reader(f)
-            counter = 1
-            for row in reader:
-                sent = TextBlob(row[4]).sentiment
-                s.write(f"On {row[0][:10]}, the article '{row[1]}' has a sentiment score of {str(sent)}\n")
-                print(f'{counter} done', end="\r")
-                counter += 1
+"""
+Made with base sentiment function in TextBlob. Contains polarity and subjectivity of text. 
+Polarity goes from [-1,1] and subjectivity goes from [0,1]
+"""
+def score_texts(texts):
+    """
+    Return list of sentiments in same order as texts
+    :param texts: list of texts
+    :return: list of scores. scores contain polarity and subjectivity
+    """
+    scores = [TextBlob(text).sentiment for text in texts]
+    return scores
 
 
 def aggregate_scores(filepath):
