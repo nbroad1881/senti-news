@@ -1,6 +1,8 @@
 import csv
-import json
+import datetime
+import logging
 
+import spacy
 import pathlib
 import numpy as np
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -20,7 +22,7 @@ negative sentiment = compound score <= -0.05
 """
 
 
-def analyze_texts(texts):
+def score_texts(texts):
     """
     Return list of sentiments in same order as texts
     :param texts: list of texts
@@ -42,8 +44,28 @@ def load_texts(filepath, column):
     """
     with open(filepath, 'r') as file:
         reader = csv.reader(file)
-    return [row[column] for row in reader]
+        return [row[column] for row in reader]
 
+def clean_texts(texts):
+    """
+    Vader will automatically do this.
+    :param texts:
+    :return:
+    """
+    clean_text = []
+    for text in texts:
+        doc = nlp(text)
+        sentence = ' '.join([token.lemma_ for token in doc if not token.is_stop])
+        clean_text.append(sentence)
+    return clean_text
+
+def get_score_counts(scores):
+    """
+    Print the number of positive, neutral, and negative scores
+    for a given list of scores
+    :param scores: list of vader scores
+    :return: None
+    """
 
 def aggregate_scores(filepath):
     neg = []
