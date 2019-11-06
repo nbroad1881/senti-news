@@ -1,22 +1,48 @@
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import csv
 import json
+
+import pathlib
 import numpy as np
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+FOLDER_LOCATION = pathlib.Path('./saved_texts/CNN/text_info/')
+FILENAME = 'CNN_INFO.csv'
+CNN_TITLE_COLUMN = 3
+
+"""
+Vader is trained on social media posts and is relatively straightforward
+to implement. It will be one of the first approaches for sentiment analysis
+of news articles. 
+Scores are as follows:
+positive sentiment = compound score >= 0.05
+neutral sentiment = (compound score > -0.05) and (compound score < 0.05)
+negative sentiment = compound score <= -0.05
+"""
 
 
-def analyze_text(filepath):
+def analyze_texts(texts):
+    """
+    Return list of sentiments in same order as texts
+    :param texts: list of texts
+    :return: list of scores. scores are dict with keys of
+    neg, neu, pos, compound
+    """
     analyzer = SentimentIntensityAnalyzer()
-    with open(filepath, 'w') as s:
-        s.write('positive sentiment: compound score >= 0.05, neutral sentiment: (compound score > -0.05) and (compound '
-                'score < 0.05), negative sentiment: compound score <= -0.05\n')
-        with open('../saved_texts/cnn_articles.csv', 'r') as f:
-            reader = csv.reader(f)
-            counter = 1
-            for row in reader:
-                vs = analyzer.polarity_scores(row[4])
-                s.write(f"On {row[0][:10]}, the article '{row[1]}' has a sentiment score of {str(vs)}\n")
-                print(f'{counter} done', end="\r")
-                counter += 1
+    scores = [analyzer.polarity_scores(text) for text in texts]
+    return scores
+
+
+def load_texts(filepath, column):
+    """
+    The titles are stored in csv files, and the column for title
+    is inconsistent. Assumes there are no headers in csv
+    :param filepath: path to csv
+    :param column: column in csv that corresponds to titles
+    :return: list of titles
+    """
+    with open(filepath, 'r') as file:
+        reader = csv.reader(file)
+    return [row[column] for row in reader]
 
 
 def aggregate_scores(filepath):
@@ -46,6 +72,7 @@ def aggregate_scores(filepath):
     print(f'Number of positive articles: {num_pos}')
     print(f'Number of neutral articles: {num_neu}')
     print(f'Number of negative articles: {num_neg}')
+
 
 if __name__ == '__main__':
     aggregate_scores('sentiment_scores/cnn_sentiment_scores_vader.txt')
