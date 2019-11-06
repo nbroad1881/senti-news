@@ -7,10 +7,20 @@ import pathlib
 import numpy as np
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-FOLDER_LOCATION = pathlib.Path('./saved_texts/CNN/text_info/')
-FILENAME = 'CNN_INFO.csv'
+CNN_DIR_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
+CNN_INFO_FILENAME = 'CNN_INFO.csv'
 CNN_TITLE_COLUMN = 3
 
+FOX_DIR_PATH = pathlib.Path('../saved_texts/FOX/text_info/')
+FOX_INFO_FILENAME = 'FOX_INFO.csv'
+FOX_TITLE_COLUMN = 2
+
+NYT_DIR_PATH = pathlib.Path('../saved_texts/NYT/text_info/')
+NYT_INFO_FILENAME = 'NYT_INFO.csv'
+NYT_TITLE_COLUMN = 3
+
+logging.basicConfig(level=logging.INFO)
+nlp = spacy.load("en_core_web_sm")
 """
 Vader is trained on social media posts and is relatively straightforward
 to implement. It will be one of the first approaches for sentiment analysis
@@ -97,4 +107,16 @@ def aggregate_scores(filepath):
 
 
 if __name__ == '__main__':
-    aggregate_scores('sentiment_scores/cnn_sentiment_scores_vader.txt')
+    choice = input("Which news company to analyze?\n"
+                   "1. CNN\n"
+                   "2. Fox News\n"
+                   "3. NYTimes\n")
+    if choice == '1':
+        texts = load_texts((CNN_DIR_PATH / CNN_INFO_FILENAME), CNN_TITLE_COLUMN)
+    elif choice == '2':
+        texts = load_texts((FOX_DIR_PATH / FOX_INFO_FILENAME), FOX_TITLE_COLUMN)
+    elif choice == '3':
+        texts = load_texts((NYT_DIR_PATH / NYT_INFO_FILENAME), NYT_TITLE_COLUMN)
+    scores = score_texts(texts)
+    get_score_counts(scores)
+    print(list(zip(texts, scores)))
