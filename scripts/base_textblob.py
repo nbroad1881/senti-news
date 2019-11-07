@@ -1,5 +1,6 @@
 import pathlib
 import csv
+import logging
 
 import spacy
 import numpy as np
@@ -17,6 +18,11 @@ NYT_DIR_PATH = pathlib.Path('../saved_texts/NYT/text_info/')
 NYT_INFO_FILENAME = 'NYT_INFO.csv'
 NYT_TITLE_COLUMN = 3
 
+POSITIVE_NEUTRAL_BOUNDARY = 0.33
+NEGATIVE_NEUTRAL_BOUNDARY = -0.33
+SUBJECTIVE_BOUNDARY = 0.5
+
+logging.basicConfig(level=logging.INFO)
 nlp = spacy.load("en_core_web_sm")
 """
 Made with base sentiment function in TextBlob. Contains polarity and subjectivity of text. 
@@ -73,11 +79,12 @@ def get_score_counts(scores):
 
     polarities = np.array([score.polarity for score in scores])
     subjectivities = np.array([score.subjectivity for score in scores])
-    num_negative_scores = sum(polarities <= -0.33)
-    num_neutral_scores = sum(np.bitwise_and(polarities > -0.33, polarities < 0.33))
-    num_positive_scores = sum(polarities >= 0.33)
-    num_subjective_scores = sum(subjectivities >= 0.5)
-    num_objective_scores = sum(subjectivities < 0.5)
+    num_negative_scores = sum(polarities <= NEGATIVE_NEUTRAL_BOUNDARY)
+    num_neutral_scores = sum(np.bitwise_and(polarities > NEGATIVE_NEUTRAL_BOUNDARY,
+                                            polarities < POSITIVE_NEUTRAL_BOUNDARY))
+    num_positive_scores = sum(polarities >= POSITIVE_NEUTRAL_BOUNDARY)
+    num_subjective_scores = sum(subjectivities >= SUBJECTIVE_BOUNDARY)
+    num_objective_scores = sum(subjectivities < SUBJECTIVE_BOUNDARY)
 
     print(f'Out of {len(polarities)} texts:\n'
           f'Number of positive articles: {num_positive_scores}\n'
@@ -87,7 +94,45 @@ def get_score_counts(scores):
           f'Number of objective articles: {num_objective_scores}')
 
 
-if __name__ == '__main__':
+def to_integer_labels(scores):
+    """
+    Return a list of integers where -1 corresponds to negative label,
+    0 corresponds to neutral, and +1 corresponds to positive label.
+    :param scores: list of Sentiments
+    :return: list of integers
+    """
+    integer_labels = []
+    for score in scores:
+        if score.polarity <= NEGATIVE_NEUTRAL_BOUNDARY:
+            integer_labels.append(-1)
+        elif NEGATIVE_NEUTRAL_BOUNDARY < score.polarity < POSITIVE_NEUTRAL_BOUNDARY:
+            integer_labels.append(0)
+        elif score.polarity > POSITIVE_NEUTRAL_BOUNDARY:
+            integer_labels.append(1)
+        else:  # this should hopefully never happen
+            integer_labels.append(None)
+    return integer_labels
+
+
+def scores_to_csv(filepath, scores):
+    """
+    Adds a column of compound scores labelled with the date
+    to the csv.
+    :param filepath: path to csv
+    :param scores: list of scores
+    :return: None
+    """
+    with open(filepath, 'w') as file:
+        reader = csv.reader(file)
+        writer = csv.writer(file)
+        for index, row in enumerate(reader):
+            logging.debug(f'Added score to row {index}')
+            date = datetime.date.today().isoformat()
+            new_col = f'VADER({date}):{scores[index]["compound"]}'
+            writer.writerow(row + [new_col])
+
+
+def main():
     choice = input("Which news company to analyze?\n"
                    "1. CNN\n"
                    "2. Fox News\n"
@@ -100,3 +145,7 @@ if __name__ == '__main__':
         texts = load_texts((NYT_DIR_PATH / NYT_INFO_FILENAME), NYT_TITLE_COLUMN)
     scores = score_texts(texts, clean=True)
     get_score_counts(scores)
+
+
+if __name__ == '__main__':
+    main()
