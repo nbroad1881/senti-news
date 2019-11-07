@@ -88,6 +88,12 @@ def get_score_counts(scores):
           f'Number of negative articles: {num_negative_scores}')
 
 def to_integer_labels(scores):
+    """
+    Return a list of integers where -1 corresponds to negative label,
+    0 corresponds to neutral, and +1 corresponds to positive label.
+    :param scores: list of Sentiments
+    :return: list of integers
+    """
     integer_labels = []
     for score in scores:
         if score['compound'] <= -0.05:
