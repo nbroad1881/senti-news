@@ -1,11 +1,23 @@
-from textblob import TextBlob
+import pathlib
 import csv
+
+import spacy
 import numpy as np
+from textblob import TextBlob
+
+CNN_DIR_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
+CNN_INFO_FILENAME = 'CNN_INFO.csv'
+CNN_TITLE_COLUMN = 3
 
 FOX_DIR_PATH = pathlib.Path('../saved_texts/FOX/text_info/')
 FOX_INFO_FILENAME = 'FOX_INFO.csv'
 FOX_TITLE_COLUMN = 2
 
+NYT_DIR_PATH = pathlib.Path('../saved_texts/NYT/text_info/')
+NYT_INFO_FILENAME = 'NYT_INFO.csv'
+NYT_TITLE_COLUMN = 3
+
+nlp = spacy.load("en_core_web_sm")
 """
 Made with base sentiment function in TextBlob. Contains polarity and subjectivity of text. 
 Polarity goes from [-1,1] and subjectivity goes from [0,1]
