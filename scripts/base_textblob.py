@@ -1,3 +1,4 @@
+import datetime
 import pathlib
 import csv
 import logging
@@ -122,14 +123,16 @@ def scores_to_csv(filepath, scores):
     :param scores: list of scores
     :return: None
     """
+    with open(filepath, 'r') as file:
+        old_rows = [row for row in csv.reader(file)]
     with open(filepath, 'w') as file:
-        reader = csv.reader(file)
         writer = csv.writer(file)
-        for index, row in enumerate(reader):
-            logging.debug(f'Added score to row {index}')
-            date = datetime.date.today().isoformat()
-            new_col = f'VADER({date}):{scores[index]["compound"]}'
-            writer.writerow(row + [new_col])
+        for index, old_row in enumerate(old_rows):
+            today = datetime.date.today().isoformat()
+            new_col = f'TextBlob({today}):' \
+                      f'Polarity={round(scores[index].polarity, 3)}' \
+                      f'Subjectivity={round(scores[index].polarity, 3)}'
+            writer.writerow(old_row + [new_col])
 
 
 def main():
