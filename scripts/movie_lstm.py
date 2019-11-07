@@ -31,6 +31,7 @@ import spacy
 TEXTS_DIR = '/Users/nicholasbroad/PycharmProjects/candidate-predictions/saved_texts/FOX/texts'
 SENTIMENT_SCORE_CSV = 'LSTM_FOX_SCORES.CSV'
 
+
 class SentimentAnalyser(object):
     @classmethod
     def load(cls, path, nlp, max_length=100):
@@ -99,18 +100,17 @@ def get_features(docs, max_length):
 
 
 def train(
-    train_texts,
-    train_labels,
-    dev_texts,
-    dev_labels,
-    lstm_shape,
-    lstm_settings,
-    lstm_optimizer,
-    batch_size=100,
-    nb_epoch=5,
-    by_sentence=True,
+        train_texts,
+        train_labels,
+        dev_texts,
+        dev_labels,
+        lstm_shape,
+        lstm_settings,
+        lstm_optimizer,
+        batch_size=100,
+        nb_epoch=5,
+        by_sentence=True,
 ):
-
     print("Loading spaCy")
     nlp = spacy.load("en_vectors_web_lg")
     nlp.add_pipe(nlp.create_pipe("sentencizer"))
@@ -191,6 +191,7 @@ def evaluate(model_dir, text_dir, max_length=100):
         for sentiment, id_ in zip(sentiments, ids):
             writer.writerow([sentiment, id_])
 
+
 def read_data(data_dir, limit=0):
     examples = []
     for subdir, label in (("pos", 1), ("neg", 0)):
@@ -218,24 +219,24 @@ def read_data(data_dir, limit=0):
     nr_examples=("Limit to N examples", "option", "n", int),
 )
 def main(
-    model_dir=None,
-    train_dir=None,
-    dev_dir=None,
-    is_runtime=False,
-    nr_hidden=64,
-    max_length=100,  # Shape
-    dropout=0.5,
-    learn_rate=0.001,  # General NN config
-    nb_epoch=5,
-    batch_size=256,
-    nr_examples=-1,
+        model_dir=None,
+        train_dir=None,
+        dev_dir=None,
+        is_runtime=False,
+        nr_hidden=64,
+        max_length=100,  # Shape
+        dropout=0.5,
+        learn_rate=0.001,  # General NN config
+        nb_epoch=5,
+        batch_size=256,
+        nr_examples=-1,
 ):  # Training params
     if model_dir is not None:
         model_dir = pathlib.Path(model_dir)
     if train_dir is None or dev_dir is None:
         imdb_data = thinc.extra.datasets.imdb()
     if is_runtime:
-        evaluate(model_dir, TEXTS_DIR,  max_length=max_length)
+        evaluate(model_dir, TEXTS_DIR, max_length=max_length)
     else:
         if train_dir is None:
             train_texts, train_labels = zip(*imdb_data[0])
