@@ -50,7 +50,7 @@ class NYT(scrapy.Spider, ArticleSource):
     UNIQUE_IDS_PATH = pathlib.Path('')  # empty but implemented in functions to allow for each changes in future
     UNIQUE_IDS_FILE_NAME = "NYT_UNIQUE_IDS.csv"
     ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/NYT/texts')
-    ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/NYT/info')
+    ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/NYT/text_info')
     INFO_FILE_NAME = "NYT_INFO.csv"
     TESTING_QUERY = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?begin_date=20191001&end_date=20191031' \
                     '&facet=true&facet_fields=document_type&fq=article&q=biden&sort=newest&api-key' \
@@ -84,13 +84,14 @@ class NYT(scrapy.Spider, ArticleSource):
                 all_info.extend(info)
 
         for url, info in zip(all_urls, all_info):
-            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(id_=info['id']))
+            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(info=info))
 
     # todo: not violate LSP
-    def parse(self, response, id_):
+    def parse(self, response, info):
         # todo: check for bad responses
         body = ' '.join(response.xpath('//section[contains(@name, "articleBody")]//text()').getall())
-        self.store_article(body, id_)
+        self.store_article(body, info['id'])
+        self.store_info(info)
         self.set_unique_ids()
 
     def make_api_call(self, api_url):
@@ -163,7 +164,7 @@ class NYT(scrapy.Spider, ArticleSource):
             logging.debug(f'Making directory {self.ARTICLE_INFO_PATH}')
             self.ARTICLE_INFO_PATH.mkdir(parents=True)
         with open(self.ARTICLE_INFO_PATH / self.INFO_FILE_NAME, 'a') as file:
-            logging.debug(f'Wrote NYT article ({info["id"]}) to file')
+            logging.debug(f'Wrote NYT info ({info["id"]}) to file')
             writer = csv.writer(file)
             writer.writerow([info['url'],
                              info['date'],
