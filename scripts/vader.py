@@ -56,6 +56,7 @@ def load_texts(filepath, column):
         reader = csv.reader(file)
         return [row[column] for row in reader]
 
+
 def clean_texts(texts):
     """
     Vader will automatically do this.
@@ -68,6 +69,7 @@ def clean_texts(texts):
         sentence = ' '.join([token.lemma_ for token in doc if not token.is_stop])
         clean_text.append(sentence)
     return clean_text
+
 
 def get_score_counts(scores):
     """
@@ -87,6 +89,7 @@ def get_score_counts(scores):
           f'Number of neutral articles: {num_neutral_scores}\n'
           f'Number of negative articles: {num_negative_scores}')
 
+
 def to_integer_labels(scores):
     """
     Return a list of integers where -1 corresponds to negative label,
@@ -98,7 +101,7 @@ def to_integer_labels(scores):
     for score in scores:
         if score['compound'] <= -0.05:
             integer_labels.append(-1)
-        elif score['compound'] > -0.05 and  score['compound'] < 0.05:
+        elif score['compound'] > -0.05 and score['compound'] < 0.05:
             integer_labels.append(0)
         elif score['compound'] > 0.05:
             integer_labels.append(1)
@@ -115,14 +118,15 @@ def scores_to_csv(filepath, scores):
     :param scores: list of scores
     :return: None
     """
+
+    with open(filepath, 'r') as file:
+        old_rows = [row for row in csv.reader(file)]
     with open(filepath, 'w') as file:
-        reader = csv.reader(file)
         writer = csv.writer(file)
-        for index, row in enumerate(reader):
-            logging.debug(f'Added score to row {index}')
+        for index, old_row in enumerate(old_rows):
             date = datetime.date.today().isoformat()
             new_col = f'VADER({date}):{scores[index]["compound"]}'
-            writer.writerow(row + [new_col])
+            writer.writerow(old_row + [new_col])
 
 
 if __name__ == '__main__':
