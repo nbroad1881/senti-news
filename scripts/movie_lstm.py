@@ -29,7 +29,19 @@ from spacy.compat import pickle
 import spacy
 
 TEXTS_DIR = '/Users/nicholasbroad/PycharmProjects/candidate-predictions/saved_texts/FOX/texts'
-SENTIMENT_SCORE_CSV = 'LSTM_FOX_SCORES.CSV'
+SENTIMENT_SCORE_CSV = 'LSTM_FOX_TITLE_SCORES.CSV'
+
+CNN_DIR_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
+CNN_INFO_FILENAME = 'CNN_INFO.csv'
+CNN_TITLE_COLUMN = 3
+
+FOX_DIR_PATH = pathlib.Path('../saved_texts/FOX/text_info/')
+FOX_INFO_FILENAME = 'FOX_INFO.csv'
+FOX_TITLE_COLUMN = 2
+
+NYT_DIR_PATH = pathlib.Path('../saved_texts/NYT/text_info/')
+NYT_INFO_FILENAME = 'NYT_INFO.csv'
+NYT_TITLE_COLUMN = 3
 
 
 class SentimentAnalyser(object):
@@ -171,25 +183,36 @@ def get_embeddings(vocab):
     return vocab.vectors.data
 
 
-def evaluate(model_dir, text_dir, max_length=100):
+# todo: standardize the columns in csvs
+def evaluate(model_dir, text_dir, max_length=100, is_csv=False, title_col_num=3, id_col_num=2):
     nlp = spacy.load("en_vectors_web_lg")
     nlp.add_pipe(nlp.create_pipe("sentencizer"))
     nlp.add_pipe(SentimentAnalyser.load(model_dir, nlp, max_length=max_length))
 
     texts = []
     ids = []
-    for entry in os.scandir(text_dir):
-        if entry.is_file() and os.path.splitext(entry)[1] == '.txt':
-            with open(entry, 'r') as file:
-                texts.append(file.read())
-            ids.append(os.path.split(entry)[1])
+    if is_csv:
+        with open(text_dir, 'r') as csv_file:
+            reader = csv.reader(csv_file)
+            for row in reader:
+                texts.append(row[title_col_num])
+                ids.append(row[id_col_num])
+    else:
+        for entry in os.scandir(text_dir):
+            if entry.is_file() and os.path.splitext(entry)[1] == '.txt':
+                with open(entry, 'r') as file:
+                    texts.append(file.read())
+                ids.append(os.path.split(entry)[1])
     sentiments = []
     for doc in nlp.pipe(texts, batch_size=1000):
         sentiments.append(doc.sentiment)
-    with open(SENTIMENT_SCORE_CSV, 'w') as file:
+    with open(text_dir, 'r') as file:
+        old_rows = [row for row in csv.reader(file)]
+    with open(text_dir, 'w') as file:
         writer = csv.writer(file)
-        for sentiment, id_ in zip(sentiments, ids):
-            writer.writerow([sentiment, id_])
+        for index, old_row in enumerate(old_rows):
+            new_col = f'LSTM({round(sentiments[index],2)})'
+            writer.writerow(old_row+[new_col])
 
 
 def read_data(data_dir, limit=0):
@@ -236,7 +259,7 @@ def main(
     if train_dir is None or dev_dir is None:
         imdb_data = thinc.extra.datasets.imdb()
     if is_runtime:
-        evaluate(model_dir, TEXTS_DIR, max_length=max_length)
+        evaluate(model_dir, (FOX_DIR_PATH / FOX_INFO_FILENAME), max_length=max_length, is_csv=True, title_col_num=FOX_TITLE_COLUMN, id_col_num=1)
     else:
         if train_dir is None:
             train_texts, train_labels = zip(*imdb_data[0])
