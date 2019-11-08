@@ -1,5 +1,6 @@
 import csv
 import logging
+import pathlib
 
 from newsapi.newsapi_client import NewsApiClient
 
@@ -10,12 +11,19 @@ newsapi = NewsApiClient(api_key='f725be960d5c4ed9937f84cef2620702')
 
 candidates = ['Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
 PAGE_SIZE = 100
-NEWSAPI_CSV = 'NEWSAPI.csv'
-NEWSAPI_NEW_CSV = 'NEWSAPI_NEW.csv'
+NEWSAPI_CSV = pathlib.Path('NEWSAPI.csv')
+NEWSAPI_NEW_CSV = pathlib.Path('NEWSAPI_NEW.csv')
 
 
-def append_all_info():
-    with open(NEWSAPI_CSV, 'a') as csv_file:
+def append_all_info(filepath):
+
+    if filepath.is_file():
+        with open(filepath, 'r') as csv_file:
+            reader = csv.reader(csv_file)
+            unique_urls = set([row[0] for row in reader])
+    else:
+        unique_urls = set()
+    with open(filepath, 'a') as csv_file:
         writer = csv.writer(csv_file)
         for candidate in candidates:
             first_call = newsapi.get_everything(q=candidate,
@@ -30,6 +38,8 @@ def append_all_info():
                                                 page_size=1)
             if first_call['status'] == 'ok':
                 num_results = first_call['totalResults']
+                counter = 0
+                logging.info(f'Number of results for {candidate} = {num_results}')
                 for page in range(num_results // PAGE_SIZE + 1):
                     all_articles = newsapi.get_everything(q=candidate,
                                                           sources='abc-news,associated-press,bbc-news,cbc-news,'
@@ -40,16 +50,23 @@ def append_all_info():
                                                                   'vice-news',
                                                           language='en',
                                                           sort_by='relevancy',
-                                                          page=1,
+                                                          page=page,
                                                           page_size=PAGE_SIZE)
 
                     for article in all_articles['articles']:
-                        logging.info(f'type = {type(article)}')
-                        writer.writerow([article['url'],
-                                         article['source']['id'],
-                                         article['description'],
-                                         article['publishedAt'],
-                                         article['content']])
+                        url = article['url']
+                        if url not in unique_urls:
+                            logging.info(f'logging (#{counter}) = {article["title"]}')
+                            counter += 1
+                            unique_urls.add(url)
+                            writer.writerow([url,
+                                             article['title'],
+                                             article['source']['id'],
+                                             article['source']['name'],
+                                             f'q={candidate}',
+                                             article['description'],
+                                             article['publishedAt'],
+                                             article['content']])
 
 
 def remove_duplicates(old_filepath, new_filepath):
@@ -69,4 +86,5 @@ def remove_duplicates(old_filepath, new_filepath):
 
 
 if __name__ == '__main__':
-    remove_duplicates(NEWSAPI_CSV, NEWSAPI_NEW_CSV)
+    append_all_info(NEWSAPI_CSV)
+    # remove_duplicates(NEWSAPI_CSV, NEWSAPI_NEW_CSV)
