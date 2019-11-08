@@ -129,7 +129,7 @@ def scores_to_csv(filepath, scores):
             writer.writerow(old_row + [new_col])
 
 
-if __name__ == '__main__':
+def main():
     choice = input("Which news company to analyze?\n"
                    "1. CNN\n"
                    "2. Fox News\n"
@@ -143,3 +143,7 @@ if __name__ == '__main__':
     scores = score_texts(texts)
     get_score_counts(scores)
     print(list(zip(texts, scores)))
+
+
+if __name__ == '__main__':
+    main()
