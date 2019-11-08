@@ -1,6 +1,7 @@
 import csv
 import logging
 import pathlib
+import datetime
 
 from newsapi.newsapi_client import NewsApiClient
 
@@ -13,10 +14,14 @@ candidates = ['Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris'
 PAGE_SIZE = 100
 NEWSAPI_CSV = pathlib.Path('NEWSAPI.csv')
 NEWSAPI_NEW_CSV = pathlib.Path('NEWSAPI_NEW.csv')
+SOURCE_GROUP_SIZE = 6
+
+all_sources = ['abc-news', 'associated-press', 'bbc-news', 'cbc-news', 'cnbc', 'cnn', 'fox-news', 'msnbc', 'nbc-news',
+               'newsweek', 'politico', 'reuters,the-hill,the-american-conservative', 'the-huffington-post',
+               'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time,usa-today', 'vice-news']
 
 
 def append_all_info(filepath):
-
     if filepath.is_file():
         with open(filepath, 'r') as csv_file:
             reader = csv.reader(csv_file)
@@ -27,11 +32,7 @@ def append_all_info(filepath):
         writer = csv.writer(csv_file)
         for candidate in candidates:
             first_call = newsapi.get_everything(q=candidate,
-                                                sources='abc-news,associated-press,bbc-news,cbc-news,cnbc,cnn,fox-news,'
-                                                        'msnbc,nbc-news,newsweek,politico,reuters,the-hill,'
-                                                        'the-american-conservative,the-huffington-post,'
-                                                        'the-wall-street-journal,the-washington-post,'
-                                                        'the-washington-times,time,usa-today,vice-news',
+                                                sources=''.join(all_sources),
                                                 language='en',
                                                 sort_by='relevancy',
                                                 page=1,
@@ -40,33 +41,35 @@ def append_all_info(filepath):
                 num_results = first_call['totalResults']
                 counter = 0
                 logging.info(f'Number of results for {candidate} = {num_results}')
-                for page in range(num_results // PAGE_SIZE + 1):
-                    all_articles = newsapi.get_everything(q=candidate,
-                                                          sources='abc-news,associated-press,bbc-news,cbc-news,'
-                                                                  'cnbc,cnn,fox-news,msnbc,nbc-news,newsweek,politico,'
-                                                                  'reuters,the-hill,the-american-conservative,'
-                                                                  'the-huffington-post,the-wall-street-journal,'
-                                                                  'the-washington-post,the-washington-times,time,usa-today,'
-                                                                  'vice-news',
-                                                          language='en',
-                                                          sort_by='relevancy',
-                                                          page=page,
-                                                          page_size=PAGE_SIZE)
+                for index in range(0, len(all_sources), SOURCE_GROUP_SIZE):
+                    sources = all_sources[index:SOURCE_GROUP_SIZE]
+                    for days_back in range(30, 1, -1):
+                        from_param = datetime.date.today() - datetime.timedelta(days=days_back)
+                        to_param = from_param + datetime.timedelta(days=1)
+                        # todo: handle rateLimited error
+                        all_articles = newsapi.get_everything(q=candidate,
+                                                              sources=','.join(sources),
+                                                              language='en',
+                                                              from_param=from_param.isoformat(),
+                                                              to=to_param.isoformat(),
+                                                              sort_by='relevancy',
+                                                              page=1,
+                                                              page_size=PAGE_SIZE)
 
-                    for article in all_articles['articles']:
-                        url = article['url']
-                        if url not in unique_urls:
-                            logging.info(f'logging (#{counter}) = {article["title"]}')
-                            counter += 1
-                            unique_urls.add(url)
-                            writer.writerow([url,
-                                             article['title'],
-                                             article['source']['id'],
-                                             article['source']['name'],
-                                             f'q={candidate}',
-                                             article['description'],
-                                             article['publishedAt'],
-                                             article['content']])
+                        for article in all_articles['articles']:
+                            url = article['url']
+                            if url not in unique_urls:
+                                logging.info(f'logging (#{counter}) = {article["title"]}')
+                                counter += 1
+                                unique_urls.add(url)
+                                writer.writerow([url,
+                                                 article['title'],
+                                                 article['source']['id'],
+                                                 article['source']['name'],
+                                                 f'q={candidate}',
+                                                 article['description'],
+                                                 article['publishedAt'],
+                                                 article['content']])
 
 
 def remove_duplicates(old_filepath, new_filepath):
