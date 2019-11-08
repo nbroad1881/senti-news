@@ -293,7 +293,7 @@ class FOX(scrapy.Spider, ArticleSource):
     NUM_PAGES = 10
     TESTING_QUERY = 'https://api.foxnews.com/v1/content/search?q=biden&fields=date,description,title,url,image,type,' \
                     'taxonomy&section.path=fnc&type=article&min_date=2019-10-10&max_date=2019-10-10&start=0&callback' \
-                    '=angular.callbacks._0&cb=112 '
+                    '=angular.callbacks._0&cb=112'
 
     def __init__(self):
         self.unique_ids = self.get_unique_ids()
