@@ -211,7 +211,7 @@ def evaluate(model_dir, text_dir, max_length=100, is_csv=False, title_col_num=3,
     with open(text_dir, 'w') as file:
         writer = csv.writer(file)
         for index, old_row in enumerate(old_rows):
-            new_col = f'LSTM({round(sentiments[index],2)})'
+            new_col = f'LSTM({round(sentiments[index],3)})'
             writer.writerow(old_row+[new_col])
 
 
