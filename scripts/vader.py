@@ -1,11 +1,13 @@
 import csv
-import datetime
+from datetime import datetime
 import logging
 
+from dateutil.parser import isoparse
 import spacy
 import pathlib
 import numpy as np
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from sqlalchemy import create_engine, MetaData, Table, Column, String, DateTime, Text, Float
 
 CNN_DIR_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
 CNN_INFO_FILENAME = 'CNN_INFO.csv'
@@ -18,6 +20,8 @@ FOX_TITLE_COLUMN = 2
 NYT_DIR_PATH = pathlib.Path('../saved_texts/NYT/text_info/')
 NYT_INFO_FILENAME = 'NYT_INFO.csv'
 NYT_TITLE_COLUMN = 3
+
+DB_URL = "postgresql://nicholasbroad:@localhost:5432/nicholasbroad"
 
 logging.basicConfig(level=logging.INFO)
 nlp = spacy.load("en_core_web_sm")
@@ -44,17 +48,21 @@ def score_texts(texts):
     return scores
 
 
-def load_texts(filepath, column):
+def load_texts(filepath, column, all_columns=None):
     """
     The titles are stored in csv files, and the column for title
     is inconsistent. Assumes there are no headers in csv
+    :param all_columns: set True to return all columns in row rather than just specified column
     :param filepath: path to csv
     :param column: column in csv that corresponds to titles
     :return: list of titles
     """
     with open(filepath, 'r') as file:
         reader = csv.reader(file)
-        return [row[column] for row in reader]
+        if all_columns:
+            return [row for row in reader]
+        else:
+            return [row[column] for row in reader]
 
 
 def clean_texts(texts):
@@ -71,7 +79,7 @@ def clean_texts(texts):
     return clean_text
 
 
-def get_score_counts(scores):
+def print_score_counts(scores):
     """
     Print the number of positive, neutral, and negative scores
     for a given list of scores
@@ -129,20 +137,88 @@ def scores_to_csv(filepath, scores):
             writer.writerow(old_row + [new_col])
 
 
+def record_to_db(rows, scores, table, conn):
+    """
+    :param table:
+    :param rows: List of information from csv like url, title, date
+    :param scores: Vader sentiment scores
+    :param conn: engine connection
+    :return: None
+    """
+    for i, row in enumerate(rows):
+        ins = table.insert().values(
+            {
+                'url': row[0],
+                'date': isoparse(row[1]),
+                'title': row[3],
+                'publisher': 'CNN',
+                'content': '',
+                'vader_positive': scores[i].get('pos'),
+                'vader_neutral': scores[i].get('neu'),
+                'vader_negative': scores[i].get('neg'),
+                'vader_compound': scores[i].get('compound')
+            }
+        )
+        conn.execute(ins)
+
+
+def clean_text(text):
+    import re
+    pattern = re.compile('[^a-zA-Z\d\s:]+', re.UNICODE)
+    return pattern.sub('', text)
+
+
+def make_vader_table(engine):
+    meta = MetaData()
+    vader_scores = Table('vader_scores', meta,
+                         Column('url', String(200), primary_key=True),
+                         Column('date', DateTime(), default=datetime.utcnow()),
+                         Column('title', Text),
+                         Column('publisher', String(20)),
+                         Column('content', Text),
+                         Column('vader_positive', Float),
+                         Column('vader_neutral', Float),
+                         Column('vader_negative', Float),
+                         Column('vader_compound', Float))
+    vader_scores.create(engine)
+    return vader_scores
+
+
 def main():
     choice = input("Which news company to analyze?\n"
                    "1. CNN\n"
                    "2. Fox News\n"
                    "3. NYTimes\n")
     if choice == '1':
-        texts = load_texts((CNN_DIR_PATH / CNN_INFO_FILENAME), CNN_TITLE_COLUMN)
+        csv_path = (CNN_DIR_PATH / CNN_INFO_FILENAME)
+        col_num = CNN_TITLE_COLUMN
     elif choice == '2':
-        texts = load_texts((FOX_DIR_PATH / FOX_INFO_FILENAME), FOX_TITLE_COLUMN)
+        csv_path = (FOX_DIR_PATH / FOX_INFO_FILENAME)
+        col_num = FOX_TITLE_COLUMN
     elif choice == '3':
-        texts = load_texts((NYT_DIR_PATH / NYT_INFO_FILENAME), NYT_TITLE_COLUMN)
-    scores = score_texts(texts)
-    get_score_counts(scores)
-    print(list(zip(texts, scores)))
+        csv_path = (NYT_DIR_PATH / NYT_INFO_FILENAME)
+        col_num = NYT_TITLE_COLUMN
+    choice = input("Create vader table? (Y/N) ").lower()
+    if choice == 'y':
+        engine = create_engine(DB_URL)
+        make_vader_table(engine)
+    choice = input("Transfer scores to database? (Y/N) ").lower()
+    if choice == 'y':
+        rows = load_texts(filepath=csv_path, column=None, all_columns=True)
+        texts = [row[col_num] for row in rows]
+        scores = score_texts(texts)
+
+        engine = create_engine(DB_URL)
+        conn = engine.connect()
+        meta = MetaData()
+        table = Table('vader_scores', meta, autoload=True, autoload_with=engine)
+        record_to_db(rows=rows, scores=scores, table=table, conn=conn)
+        conn.close()
+    else:
+        texts = load_texts(csv_path, col_num)
+        scores = score_texts(texts)
+        print_score_counts(scores)
+        scores_to_csv(csv_path, scores)
 
 
 if __name__ == '__main__':
