@@ -131,7 +131,7 @@ def scores_to_csv(filepath, scores):
             today = datetime.date.today().isoformat()
             new_col = f'TextBlob({today}):' \
                       f'Polarity={round(scores[index].polarity, 3)}' \
-                      f'Subjectivity={round(scores[index].polarity, 3)}'
+                      f'Subjectivity={round(scores[index].subjectivity, 3)}'
             writer.writerow(old_row + [new_col])
 
 
