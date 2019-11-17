@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 import scrapy
 import requests
+from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
 
 logging.basicConfig(level=logging.INFO)
@@ -93,6 +94,11 @@ class NYT(scrapy.Spider, ArticleSource):
         self.store_article(body, info['id'])
         self.store_info(info)
         self.set_unique_ids()
+
+        # soup = BeautifulSoup(response.text)
+        # texts = []
+        # for paragraphs in soup.select('section.meteredContent p'):
+        #     texts.append(paragraphs.text)
 
     def make_api_call(self, api_url):
         logging.debug(f'api_url:{api_url}')
@@ -331,6 +337,13 @@ class FOX(scrapy.Spider, ArticleSource):
         ).getall())
         self.store_article(article_text, id_)
         self.set_unique_ids()
+
+        # soup = BeautifulSoup(response.text)
+        # paragraphs = soup.select('div.article-body p')
+        # texts = []
+        # for p in paragraphs:
+        #     if not p.find('em') and not p.find('strong') and not p.find('span'):
+        #         texts.append(p.text)
 
     def make_api_call(self, api_url):
         """
