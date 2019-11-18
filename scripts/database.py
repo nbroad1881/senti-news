@@ -1,41 +1,56 @@
 import pathlib
 
-import psycopg2
 import pandas as pd
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, String, DateTime, Text, create_engine
+from sqlalchemy.orm import sessionmaker
 
-conn = psycopg2.connect(database="nicholasbroad", host='localhost',port='5432',user='nicholasbroad',password='')
-cur = conn.cursor()
+LOCAL_POSTGRESQL_URL = 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
-print('database opened')
-CNN_DIR_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
+CNN_INFO_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
 CNN_INFO_FILENAME = 'CNN_INFO.csv'
-TEST_ROW = " INSERT INTO vader_scores VALUES('www.lol.com', '21092', 'Trump Sux', 'cnn', 'aasdf', 1, 3, 4, 5)"
 
-def create_sentiment_db(cur):
-    cur.execute("""CREATE TABLE sentiments (
-                url TEXT UNIQUE PRIMARY KEY,
-                date TEXT,
-                title TEXT,
-                publisher TEXT,
-                content TEXT,
-                vader_positive REAL,
-                vader_neutral  REAL,
-                vader_negative  REAL,
-                vader_compound  REAL)""")
-    conn.commit()
-    cur.close()
-    conn.close()
+NYT_INFO_PATH = pathlib.Path('../saved_texts/NYT/text_info')
+NYT_INFO_FILENAME = "NYT_INFO.csv"
 
+FOX_INFO_PATH = pathlib.Path('../saved_texts/FOX/text_info')
+FOX_INFO_FILENAME = "FOX_INFO.csv"
+
+URL_COL = 0
+DATE_COL = 1
+TITLE_COL = 2
+USE_COLS = [URL_COL, DATE_COL, TITLE_COL]
+
+Base = declarative_base()
+
+class Article(Base):
+    __tablename__ = 'articles'
+    url = Column(Text, primary_key=True)
+    datetime = Column(DateTime)
+    title = Column(Text)
+    news = Column(String(50))
+
+
+def create_article_db():
+    Base.metadata.create_all(engine)
+
+def add_row_to_db(url, datetime, title):
+    article = Article(url=url, datetime=datetime, title=title)
+    session.add(article)
+    session.commit()
 
 
 def transfer_from_csv(csv_filepath):
-    col_names = ['url', 'date', 'id', 'title', 'lexicon', 'vader']
-    cnn_info = pd.read_csv(csv_filepath, header=None, names=col_names)
-    cnn_info.loc[:, 'vader'] = cnn_info['vader'].str.slice(start=18).astype(float)
-    cnn_info.drop(columns=['id', 'lexicon'], inplace=True)
-    conn = sqlite3.connect('vader_test.db')
-    cnn_info.to_sql('vader_test.db', conn,  if_exists='replace')
+    info = pd.read_csv(csv_filepath, header=None, usecols=USE_COLS, parse_dates=[DATE_COL])
 
+    for row_num in range(info.shape[0]):
+        row = info.iloc[row_num, :]
+        add_row_to_db(url=row[URL_COL], datetime=row[DATE_COL], title=row[TITLE_COL])
 
-# if __name__ == '__main__':
-    # transfer_from_csv((CNN_DIR_PATH / CNN_INFO_FILENAME))
+if __name__ == '__main__':
+    engine = create_engine(LOCAL_POSTGRESQL_URL, echo=True)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    if not engine.dialect.has_table(engine, 'articles'):
+        create_article_db()
+    transfer_from_csv((NYT_INFO_PATH / NYT_INFO_FILENAME))
