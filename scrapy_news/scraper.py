@@ -2,6 +2,7 @@ import csv
 import logging
 import json
 import pathlib
+from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
 
 import scrapy
@@ -203,18 +204,20 @@ class CNN(scrapy.Spider, ArticleSource):
     @staticmethod
     def ask_for_query():
         query = input('What is the query? (e.g. biden, sanders, warren): ')
-        return query
+        begin_date = input('What is the oldest date? (YYYYMMDD): ')
+        end_date = input('What is the newest date? (YYYYMMDD): ')
+        return query, begin_date, end_date
 
     def start_requests(self):
-        query = self.ask_for_query()
+        query, begin_date, end_date = self.ask_for_query()
         api_url = self.form_query(query, page=1)
         num_results = self.make_api_call(api_url)
 
         for p in range(1, num_results // self.RESULTS_SIZE):
             url = self.form_query(query, page=p)
-            yield scrapy.Request(url=url, callback=self.parse)
+            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(begin_date=begin_date, end_date=end_date))
 
-    def parse(self, response):
+    def parse(self, response, begin_date, end_date):
 
         articles = json.loads(response.text)['result']
         for a in articles:
@@ -226,6 +229,13 @@ class CNN(scrapy.Spider, ArticleSource):
                 "url": a['url'],
                 'id': a['_id']
             }
+            article_datetime = isoparse(info['date'])
+            begin_datetime = isoparse(begin_date)
+            end_datetime = isoparse(end_date)
+
+            if article_datetime < begin_datetime or article_datetime > end_datetime:
+                continue
+
             self.unique_ids.add(info['id'])
             self.store_article(a['body'], info['id'])
             self.store_info(info)
