@@ -48,10 +48,25 @@ class Article(Base):
 def create_article_table():
     Base.metadata.create_all(engine)
 
-def add_row_to_db(url, datetime, title):
-    article = Article(url=url, datetime=datetime, title=title)
+
+def add_row_to_db(session, Article, url, datetime, title, news_co, text=''):
+    """
+    Return true if successfully added, else false
+    :param session:
+    :param Article:
+    :param url:
+    :param datetime:
+    :param title:
+    :param news_co:
+    :param text:
+    :return:
+    """
+    if in_table(session, Article, url):
+        return False
+    article = Article(url=url, datetime=datetime, title=title, news_co=news_co, text=text)
     session.add(article)
     session.commit()
+    return True
 
 
 def transfer_from_csv(csv_filepath):
