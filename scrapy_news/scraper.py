@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 
 import scrapy
 import requests
-from database import Article, add_row_to_db, get_session, get_engine, get_urls, in_table
+from database import add_row_to_db, get_session, get_urls, in_table
 from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
 
@@ -47,7 +47,7 @@ class ArticleSource(ABC):
         pass
 
     def store_info(self, url, date, title, news_co, text):
-        logged = add_row_to_db(self.session, Article, url, date, title, news_co, text)
+        logged = add_row_to_db(self.session, url, date, title, news_co, text)
         if logged:
             self.articles_logged += 1
             logging.info(f"Stored #{self.articles_logged} in db: {url}, {date}, {title}")
@@ -152,7 +152,6 @@ class NYT(scrapy.Spider, ArticleSource):
         process.crawl(self, **kwargs)
 
 
-# todo: fix isoparse date input
 class CNN(scrapy.Spider, ArticleSource):
     RESULTS_SIZE = 100
 
@@ -344,7 +343,7 @@ if __name__ == "__main__":
                    "2. Fox News\n"
                    "3. NYTimes\n"
                    "4. (in future) Debug Mode\n")
-    session = get_session(get_engine(LOCAL_POSTGRESQL_URL))
+    session = get_session(LOCAL_POSTGRESQL_URL)
     if int(choice) == 1:
         start_process(CNN, session=session)
     elif int(choice) == 2:
