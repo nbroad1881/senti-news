@@ -45,7 +45,7 @@ class Article(Base):
     text = Column(Text)
 
 
-def create_article_db():
+def create_article_table():
     Base.metadata.create_all(engine)
 
 def add_row_to_db(url, datetime, title):
