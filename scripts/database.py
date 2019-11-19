@@ -41,7 +41,8 @@ class Article(Base):
     url = Column(Text, primary_key=True)
     datetime = Column(DateTime)
     title = Column(Text)
-    news = Column(String(50))
+    news_co = Column(String(50))
+    text = Column(Text)
 
 
 def create_article_db():
