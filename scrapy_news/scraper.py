@@ -52,6 +52,11 @@ class ArticleSource(ABC):
             self.articles_logged += 1
             logging.info(f"Stored #{self.articles_logged} in db: {url}, {date}, {title}")
 
+    def improper_title(self, title):
+        names = ['trump', 'biden', 'warren', 'sanders', 'harris', 'buttigieg']
+        return sum([1 if name in title.lower() else 0 for name in names]) != 1
+
+
 
 class NYT(scrapy.Spider, ArticleSource):
     NEWS_CO = 'New York Times'
@@ -121,9 +126,7 @@ class NYT(scrapy.Spider, ArticleSource):
                 date = doc['pub_date']
                 title = doc['headline']['main']
 
-                # Id has many slashes that are unnecessary and make storing files harder
-                # todo: changehow NYT checks for unique ids
-                if url in self.unique_urls:
+                if self.improper_title(title):
                     continue
 
                 start_urls.append(url)
@@ -133,9 +136,6 @@ class NYT(scrapy.Spider, ArticleSource):
                     'title': title,
                 })
 
-                logging.debug(f'url:{url}\n'
-                              f'date:{date}\n'
-                              f'title:{title}\n')
             return start_urls, info
         logging.debug(f'Response status code:{response.status_code}')
         return None, None
@@ -201,6 +201,9 @@ class CNN(scrapy.Spider, ArticleSource):
             date = a['firstPublishDate']
             title = a['headline']
             body = a['body']
+
+            if self.improper_title(title):
+                continue
 
             article_datetime = isoparse(date)
             begin_datetime = isoparse(begin_date)
@@ -310,6 +313,8 @@ class FOX(scrapy.Spider, ArticleSource):
                     'title': d['title'],
                     'url': d['url'][0],
                 }
+                if self.improper_title(info['title']):
+                    continue
 
                 urls.append(info['url'])
                 infos.append(info)
