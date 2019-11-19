@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 LOCAL_POSTGRESQL_URL = 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
+BASE_PATH = '../saved_texts/{}/text_info/{}_INFO.csv'
 CNN_INFO_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
 CNN_INFO_FILENAME = 'CNN_INFO.csv'
 
@@ -20,8 +21,20 @@ URL_COL = 0
 DATE_COL = 1
 TITLE_COL = 2
 USE_COLS = [URL_COL, DATE_COL, TITLE_COL]
+NEWS_CO_DICT = {
+    '1': 'CNN',
+    '2': 'Fox News',
+    '3': 'New York Times'
+}
+
+CHOICE_DICT = {
+    '1': 'CNN',
+    '2': 'FOX',
+    '3': 'NYT'
+}
 
 Base = declarative_base()
+
 
 class Article(Base):
     __tablename__ = 'articles'
@@ -52,5 +65,14 @@ if __name__ == '__main__':
     Session = sessionmaker(bind=engine)
     session = Session()
     if not engine.dialect.has_table(engine, 'articles'):
-        create_article_db()
-    transfer_from_csv((NYT_INFO_PATH / NYT_INFO_FILENAME))
+        create_article_table()
+    choice = input("Which news company would you like to scrape?\n"
+                   "1. CNN\n"
+                   "2. Fox News\n"
+                   "3. NYTimes\n"
+                   "4. (in future) Debug Mode\n")
+    if choice in CHOICE_DICT:
+        news = CHOICE_DICT[choice]
+        path = pathlib.Path(BASE_PATH.format(news, news))
+        transfer_from_csv(session, path, NEWS_CO_DICT[choice])
+    session.close()
