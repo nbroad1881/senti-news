@@ -8,14 +8,6 @@ from sqlalchemy.orm import sessionmaker
 LOCAL_POSTGRESQL_URL = 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
 BASE_PATH = '../saved_texts/{}/text_info/{}_INFO.csv'
-CNN_INFO_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
-CNN_INFO_FILENAME = 'CNN_INFO.csv'
-
-NYT_INFO_PATH = pathlib.Path('../saved_texts/NYT/text_info')
-NYT_INFO_FILENAME = "NYT_INFO.csv"
-
-FOX_INFO_PATH = pathlib.Path('../saved_texts/FOX/text_info')
-FOX_INFO_FILENAME = "FOX_INFO.csv"
 
 URL_COL = 0
 DATE_COL = 1
@@ -49,11 +41,10 @@ def create_article_table():
     Base.metadata.create_all(engine)
 
 
-def add_row_to_db(session, Article, url, datetime, title, news_co, text=''):
+def add_row_to_db(session, url, datetime, title, news_co, text=''):
     """
     Return true if successfully added, else false
     :param session:
-    :param Article:
     :param url:
     :param datetime:
     :param title:
@@ -61,27 +52,43 @@ def add_row_to_db(session, Article, url, datetime, title, news_co, text=''):
     :param text:
     :return:
     """
-    if in_table(session, Article, url):
+    if in_table(session, url):
         return False
     article = Article(url=url, datetime=datetime, title=title, news_co=news_co, text=text)
     session.add(article)
     session.commit()
     return True
 
+
+def get_session(database_url, echo=False):
+    Session = sessionmaker(bind=create_engine(database_url, echo=echo))
+    return Session()
+
+
+def get_urls(session):
+    return [item[0] for item in session.query(Article.url).all()]
+
+
+def in_table(session, url):
+    return session.query(Article).get(url) is not None
+
+
 def transfer_from_csv(session, csv_filepath, news_co):
     info = pd.read_csv(csv_filepath, header=None, usecols=USE_COLS, parse_dates=[DATE_COL])
 
     for row_num in range(info.shape[0]):
         row = info.iloc[row_num, :]
-        add_row_to_db(url=row[URL_COL], datetime=row[DATE_COL], title=row[TITLE_COL])
+        url = row[URL_COL]
+        add_row_to_db(session, url=url, datetime=row[DATE_COL], title=row[TITLE_COL], news_co=news_co)
+
 
 if __name__ == '__main__':
-    engine = create_engine(LOCAL_POSTGRESQL_URL, echo=True)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    engine = create_engine(LOCAL_POSTGRESQL_URL)
+    session = get_session(engine)
     if not engine.dialect.has_table(engine, 'articles'):
         create_article_table()
-    choice = input("Which news company would you like to scrape?\n"
+
+    choice = input("Which news company would you like to transfer?\n"
                    "1. CNN\n"
                    "2. Fox News\n"
                    "3. NYTimes\n"
