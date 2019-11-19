@@ -2,76 +2,86 @@ import csv
 import logging
 import json
 import pathlib
+from datetime import datetime
 from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
 
 import scrapy
 import requests
+from database import Article, add_row_to_db, get_session, get_engine, get_urls, in_table
 from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
 
 logging.basicConfig(level=logging.INFO)
+
+LOCAL_POSTGRESQL_URL = 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
 
 # todo: have an interactive query
 #     database for text documents
 
 class ArticleSource(ABC):
-    DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
+    CANDIDATE_DICT = {
+        '1': 'Donald Trump',
+        '2': 'Joe Biden',
+        '3': 'Elizabeth Warren',
+        '4': 'Bernie Sanders',
+        '5': 'Kamala Harris',
+        '6': 'Pete Buttigieg'
+    }
+
+    def __init__(self, session):
+        self.session = session
+        self.articles_logged = 0
 
     @abstractmethod
-    def ask_for_query(self):
+    def ask_for_query(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def get_unique_ids(self):
+    def form_query(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def make_api_call(self):
+    def make_api_call(self, *args, **kwargs):
         pass
 
-    @abstractmethod
-    def set_unique_ids(self):
-        pass
-
-    @abstractmethod
-    def store_article(self):
-        pass
-
-    @abstractmethod
-    def store_info(self):
-        pass
-
-    @abstractmethod
-    def form_query(self):
-        pass
+    def store_info(self, url, date, title, news_co, text):
+        logged = add_row_to_db(self.session, Article, url, date, title, news_co, text)
+        if logged:
+            self.articles_logged += 1
+            logging.info(f"Stored #{self.articles_logged} in db: {url}, {date}, {title}")
 
 
 class NYT(scrapy.Spider, ArticleSource):
-    UNIQUE_IDS_PATH = pathlib.Path('')  # empty but implemented in functions to allow for each changes in future
-    UNIQUE_IDS_FILE_NAME = "NYT_UNIQUE_IDS.csv"
-    ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/NYT/texts')
-    ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/NYT/text_info')
-    INFO_FILE_NAME = "NYT_INFO.csv"
-    TESTING_QUERY = 'https://api.nytimes.com/svc/search/v2/articlesearch.json?begin_date=20191001&end_date=20191031' \
-                    '&facet=true&facet_fields=document_type&fq=article&q=biden&sort=newest&api-key' \
-                    '=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7 '
+    NEWS_CO = 'New York Times'
 
+    # todo: handle rate
     custom_settings = {
         'CONCURRENT_REQUESTS': 2,
         'DOWNLOAD_DELAY': 2
     }
 
-    def __init__(self):
-        self.unique_ids = self.get_unique_ids()
+    name = 'NYT'
 
-    @staticmethod
-    def ask_for_query():
-        query = input('What is the query? (e.g. biden, sanders, warren): ')
+    def __init__(self, **kwargs):
+        ArticleSource.__init__(self, **kwargs)
+
+    def ask_for_query(self):
+        query = input("Which candidate?\n"
+                      "1. Donald Trump\n"
+                      "2. Joe Biden\n"
+                      "3. Elizabeth Warren\n"
+                      "4. Bernie Sanders\n"
+                      "5. Kamala Harris\n"
+                      "6. Pete Buttigieg\n")
+        if query not in self.CANDIDATE_DICT:
+            return self.ask_for_query()
+        candidate = self.CANDIDATE_DICT[query]
         begin_date = input('What is the oldest date? (YYYYMMDD): ')
-        end_date = input('What is the newest date? (YYYYMMDD): ')
-        return query, begin_date, end_date
+        end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
+        end_date = end_date if len(end_date > 1) else datetime.utcnow().isoformat()[:10]
+        return candidate, begin_date, end_date
 
     def start_requests(self):
         query, begin_date, end_date = self.ask_for_query()
@@ -91,15 +101,14 @@ class NYT(scrapy.Spider, ArticleSource):
     # todo: not violate LSP
     def parse(self, response, info):
         # todo: check for bad responses
-        body = ' '.join(response.xpath('//section[contains(@name, "articleBody")]//text()').getall())
-        self.store_article(body, info['id'])
-        self.store_info(info)
-        self.set_unique_ids()
 
-        # soup = BeautifulSoup(response.text)
-        # texts = []
-        # for paragraphs in soup.select('section.meteredContent p'):
-        #     texts.append(paragraphs.text)
+        soup = BeautifulSoup(response.text)
+        texts = []
+        for paragraphs in soup.select('section.meteredContent p'):
+            texts.append(paragraphs.text)
+        body = ' '.join(texts)
+
+        self.store_info(url=info['url'], date=info['date'], title=info['title'], news_co=self.NEWS_CO, text=body)
 
     def make_api_call(self, api_url):
         logging.debug(f'api_url:{api_url}')
@@ -110,76 +119,26 @@ class NYT(scrapy.Spider, ArticleSource):
             for doc in json.loads(response.text)['response']['docs']:
                 url = doc['web_url']
                 date = doc['pub_date']
-                id_ = doc['_id']
                 title = doc['headline']['main']
-                doc_type = doc['document_type']
-                source = doc['source']
-                material_type = doc['type_of_material']
 
                 # Id has many slashes that are unnecessary and make storing files harder
-                id_ = id_[id_.rindex('/') + 1:]
-                if id_ in self.unique_ids:
+                # todo: changehow NYT checks for unique ids
+                if url in self.unique_urls:
                     continue
-                self.unique_ids.add(id_)
 
                 start_urls.append(url)
                 info.append({
                     'url': url,
                     'date': date,
-                    'id': id_,
                     'title': title,
-                    'doc_type': doc_type,
-                    'source': source,
-                    'material_type': material_type
                 })
 
                 logging.debug(f'url:{url}\n'
                               f'date:{date}\n'
-                              f'id:{id_}\n'
-                              f'title:{title}\n'
-                              f'doc_type:{doc_type}\n'
-                              f'source:{source}\n'
-                              f'material_type:{material_type}\n')
+                              f'title:{title}\n')
             return start_urls, info
         logging.debug(f'Response status code:{response.status_code}')
         return None, None
-
-    def get_unique_ids(self):
-        if not self.UNIQUE_IDS_PATH.is_dir():
-            self.UNIQUE_IDS_PATH.mkdir()
-        elif (self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_PATH).is_file():
-            with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'r') as file:
-                reader = csv.reader(file)
-                return set(next(reader))
-        logging.debug('No unique id file, return empty set')
-        return set()
-
-    def set_unique_ids(self):
-        with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'w') as file:
-            writer = csv.writer(file)
-            writer.writerow(list(self.unique_ids))
-
-    def store_article(self, text, id_):
-        if not self.ARTICLE_TEXT_PATH.is_dir():
-            logging.debug(f'Making directory {self.ARTICLE_TEXT_PATH}')
-            self.ARTICLE_TEXT_PATH.mkdir(parents=True)
-        with open(self.ARTICLE_TEXT_PATH / f'{id_}.txt', 'w') as file:
-            file.write(text)
-
-    def store_info(self, info):
-        if not self.ARTICLE_INFO_PATH.is_dir():
-            logging.debug(f'Making directory {self.ARTICLE_INFO_PATH}')
-            self.ARTICLE_INFO_PATH.mkdir(parents=True)
-        with open(self.ARTICLE_INFO_PATH / self.INFO_FILE_NAME, 'a') as file:
-            logging.debug(f'Wrote NYT info ({info["id"]}) to file')
-            writer = csv.writer(file)
-            writer.writerow([info['url'],
-                             info['date'],
-                             info['id'],
-                             info['title'],
-                             info['doc_type'],
-                             info['source'],
-                             info['material_type']])
 
     @staticmethod
     def form_query(query, page, begin_date='20190301', end_date='20191001', sort='newest'):
@@ -188,25 +147,39 @@ class NYT(scrapy.Spider, ArticleSource):
                         f'&facet_fields=document_type&fq=article',
                         f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'])
 
+    def start_crawl(self, **kwargs):
+        process = CrawlerProcess()
+        process.crawl(self, **kwargs)
 
+
+# todo: fix isoparse date input
 class CNN(scrapy.Spider, ArticleSource):
-    UNIQUE_IDS_PATH = pathlib.Path('')  # empty but implemented in functions to allow for each changes in future
-    UNIQUE_IDS_FILE_NAME = "CNN_UNIQUE_IDS.csv"
-    ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/CNN/texts')
-    ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/CNN/text_info')
-    INFO_FILE_NAME = "CNN_INFO.csv"
     RESULTS_SIZE = 100
-    TESTING_QUERY = "https://search.api.cnn.io/content?size=20&q=biden&type=article&sort=relevance&page=0&from=0"
 
-    def __init__(self):
-        self.unique_ids = self.get_unique_ids()
+    NEWS_CO = 'CNN'
+    name = 'CNN'
 
-    @staticmethod
-    def ask_for_query():
-        query = input('What is the query? (e.g. biden, sanders, warren): ')
-        begin_date = input('What is the oldest date? (YYYYMMDD): ')
-        end_date = input('What is the newest date? (YYYYMMDD): ')
-        return query, begin_date, end_date
+    def __init__(self, **kwargs):
+        ArticleSource.__init__(self, **kwargs)
+
+    def ask_for_query(self):
+        query = input("Which candidate?\n"
+                      "1. Donald Trump\n"
+                      "2. Joe Biden\n"
+                      "3. Elizabeth Warren\n"
+                      "4. Bernie Sanders\n"
+                      "5. Kamala Harris\n"
+                      "6. Pete Buttigieg\n")
+        if query not in self.CANDIDATE_DICT:
+            return self.ask_for_query()
+        candidate = self.CANDIDATE_DICT[query].replace(' ', '%20')
+        begin_date = input('What is the oldest date? (YYYYMMDD): ') + "T00:00:00Z"
+        end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
+        if len(end_date) > 1:
+            end_date = end_date + "T23:59:59Z"
+        else:
+            end_date = datetime.utcnow().isoformat(timespec='seconds')+'Z'
+        return candidate, begin_date, end_date
 
     def start_requests(self):
         query, begin_date, end_date = self.ask_for_query()
@@ -221,25 +194,22 @@ class CNN(scrapy.Spider, ArticleSource):
 
         articles = json.loads(response.text)['result']
         for a in articles:
-            if a['type'] != 'article' or a['_id'] in self.unique_ids:
+            if a['type'] != 'article':
                 continue
-            info = {
-                "date": a['firstPublishDate'],
-                "title": a['headline'],
-                "url": a['url'],
-                'id': a['_id']
-            }
-            article_datetime = isoparse(info['date'])
+
+            url = a['url']
+            date = a['firstPublishDate']
+            title = a['headline']
+            body = a['body']
+
+            article_datetime = isoparse(date)
             begin_datetime = isoparse(begin_date)
             end_datetime = isoparse(end_date)
 
             if article_datetime < begin_datetime or article_datetime > end_datetime:
                 continue
 
-            self.unique_ids.add(info['id'])
-            self.store_article(a['body'], info['id'])
-            self.store_info(info)
-            self.set_unique_ids()
+            self.store_info(url, date, title, self.NEWS_CO, body)
 
     def make_api_call(self, api_url):
         """
@@ -256,72 +226,40 @@ class CNN(scrapy.Spider, ArticleSource):
         else:
             logging.debug(f'Request denied ({response.status_code})')
 
-    def get_unique_ids(self):
-        """
-        Ids should be comma delimited with no line breaks
-        :return: set of ids or empty set if file not found
-        """
-        if not self.UNIQUE_IDS_PATH.is_dir():
-            self.UNIQUE_IDS_PATH.mkdir()
-        elif (self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_PATH).is_file():
-            with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'r') as file:
-                reader = csv.reader(file)
-                return set(next(reader))
-        logging.debug('No unique id file, return empty set')
-        return set()
-
-    def set_unique_ids(self):
-        with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'w') as file:
-            writer = csv.writer(file)
-            writer.writerow(list(self.unique_ids))
-
-    def store_article(self, text, id_):
-        if not self.ARTICLE_TEXT_PATH.is_dir():
-            logging.debug(f'Making directory {self.ARTICLE_TEXT_PATH}')
-            self.ARTICLE_TEXT_PATH.mkdir(parents=True)
-        with open(self.ARTICLE_TEXT_PATH / f'{id_}.txt', 'w') as file:
-            file.write(text)
-
-    def store_info(self, info):
-        if not self.ARTICLE_INFO_PATH.is_dir():
-            logging.debug(f'Making directory {self.ARTICLE_INFO_PATH}')
-            self.ARTICLE_INFO_PATH.mkdir(parents=True)
-        with open(self.ARTICLE_INFO_PATH / self.INFO_FILE_NAME, 'a') as file:
-            logging.debug(f'Wrote CNN article ({info["id"]}) to file')
-            writer = csv.writer(file)
-            writer.writerow([info['url'],
-                             info['date'],
-                             info['id'],
-                             info['title']])
-
     def form_query(self, query, page):
-        return f'https://search.api.cnn.io/content?size={self.CNN_RESULTS_SIZE}' \
-               f'&q={query}&type=article&sort=relevance&page={page}&from={str(page * self.CNN_RESULTS_SIZE)}'
+        return f'https://search.api.cnn.io/content?size={self.RESULTS_SIZE}' \
+               f'&q={query}&type=article&sort=relevance&page={page}&from={str(page * self.RESULTS_SIZE)}'
 
 
 class FOX(scrapy.Spider, ArticleSource):
-    UNIQUE_IDS_PATH = pathlib.Path('')  # empty but implemented in functions to allow for each changes in future
-    UNIQUE_IDS_FILE_NAME = 'FOX_UNIQUE_IDS.csv'
-    ARTICLE_TEXT_PATH = pathlib.Path('../saved_texts/FOX/texts')
-    ARTICLE_INFO_PATH = pathlib.Path('../saved_texts/FOX/text_info')
-    INFO_FILE_NAME = "FOX_INFO.csv"
     PAGE_SIZE = 10
     NUM_PAGES = 10
-    TESTING_QUERY = 'https://api.foxnews.com/v1/content/search?q=biden&fields=date,description,title,url,image,type,' \
-                    'taxonomy&section.path=fnc&type=article&min_date=2019-10-10&max_date=2019-10-10&start=0&callback' \
-                    '=angular.callbacks._0&cb=112'
 
-    def __init__(self):
-        self.unique_ids = self.get_unique_ids()
+    NEWS_CO = 'FOX News'
+    name = 'Fox'
 
-    @staticmethod
-    def ask_for_query():
-        query = input('What is the query? (e.g. biden, sanders, warren): ')
+    def __init__(self, **kwargs):
+        ArticleSource.__init__(self, **kwargs)
+
+    def ask_for_query(self):
+        query = input("Which candidate?\n"
+                      "1. Donald Trump\n"
+                      "2. Joe Biden\n"
+                      "3. Elizabeth Warren\n"
+                      "4. Bernie Sanders\n"
+                      "5. Kamala Harris\n"
+                      "6. Pete Buttigieg\n")
+        if query not in self.CANDIDATE_DICT:
+            return self.ask_for_query()
+        candidate = self.CANDIDATE_DICT[query].replace(' ', '+')
         begin_date = input('What is the oldest date? (YYYYMMDD): ')
         begin_date = '-'.join([begin_date[:4], begin_date[4:6], begin_date[6:8]])
-        end_date = input('What is the newest date? (YYYYMMDD): ')
-        end_date = '-'.join([end_date[:4], end_date[4:6], end_date[6:8]])
-        return query, begin_date, end_date
+        end_date = input('What is the newest date? (YYYYMMDD or nothing for today): ')
+        if len(end_date) > 1:
+            end_date = '-'.join([end_date[:4], end_date[4:6], end_date[6:8]])
+        else:
+            end_date = datetime.utcnow().isoformat()[:10]
+        return candidate, begin_date, end_date
 
     def start_requests(self):
         query, min_date, max_date = self.ask_for_query()
@@ -337,23 +275,20 @@ class FOX(scrapy.Spider, ArticleSource):
             all_info.extend(info)
 
         for url, info in zip(all_urls, all_info):
-            self.store_info(info)
-            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(id_=info['id']))
+            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(info=info))
 
-    def parse(self, response, id_):
-        article_text = ' '.join(response.xpath(
-            '//div[(@class="article-body")]//p/text()|'
-            '//div[@class="article-body"]//p/a/text()'
-        ).getall())
-        self.store_article(article_text, id_)
-        self.set_unique_ids()
+    def parse(self, response, info):
 
-        # soup = BeautifulSoup(response.text)
-        # paragraphs = soup.select('div.article-body p')
-        # texts = []
-        # for p in paragraphs:
-        #     if not p.find('em') and not p.find('strong') and not p.find('span'):
-        #         texts.append(p.text)
+        soup = BeautifulSoup(response.text)
+        paragraphs = soup.select('div.article-body p')
+        texts = []
+        for p in paragraphs:
+            if not p.find('em') and not p.find('strong') and not p.find('span'):
+                texts.append(p.text)
+
+        body = ' '.join(texts)
+
+        self.store_info(url=info['url'], date=info['date'], title=info['title'], news_co=self.NEWS_CO, text=body)
 
     def make_api_call(self, api_url):
         """
@@ -365,70 +300,22 @@ class FOX(scrapy.Spider, ArticleSource):
         :return:
         """
         response = requests.get(api_url)
-        logging.debug(f'get request: {api_url}')
         if response.status_code == 200:
-            logging.debug('Request accepted (200)')
             urls, infos = [], []
 
             text = json.loads(response.text[21:-1])['response']
-            logging.debug('Request accepted (200)')
             for d in text['docs']:
                 info = {
                     'date': d['date'],
                     'title': d['title'],
                     'url': d['url'][0],
-                    'type_': d['type'],
-                    'id': d['date']
                 }
-                if info['id'] in self.unique_ids:
-                    continue
-
-                self.unique_ids.add(info['id'])
 
                 urls.append(info['url'])
                 infos.append(info)
-            logging.debug(f'returning urls_ids:{urls}\n{infos}')
             return urls, infos
         else:
-            logging.debug(f'Request denied ({response.status_code})')
             return None
-
-    def get_unique_ids(self):
-        """
-        Ids should be comma delimited with no line breaks
-        :return: set of ids or empty set if file not found
-        """
-        if not self.UNIQUE_IDS_PATH.is_dir():
-            self.UNIQUE_IDS_PATH.mkdir()
-        elif (self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_PATH).is_file():
-            with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'r') as file:
-                reader = csv.reader(file)
-                return set(next(reader))
-        logging.debug('No unique id file, return empty set')
-        return set()
-
-    def set_unique_ids(self):
-        with open(self.UNIQUE_IDS_PATH / self.UNIQUE_IDS_FILE_NAME, 'w') as file:
-            writer = csv.writer(file)
-            writer.writerow(list(self.unique_ids))
-
-    def store_article(self, text, id_):
-        if not self.ARTICLE_TEXT_PATH.is_dir():
-            logging.debug(f'Making directory {self.ARTICLE_TEXT_PATH}')
-            self.ARTICLE_TEXT_PATH.mkdir(parents=True)
-        with open(self.ARTICLE_TEXT_PATH / f'{id_}.txt', 'w') as file:
-            file.write(text)
-
-    def store_info(self, info):
-        if not self.ARTICLE_INFO_PATH.is_dir():
-            logging.debug(f'Making directory {self.ARTICLE_INFO_PATH}')
-            self.ARTICLE_INFO_PATH.mkdir(parents=True)
-        with open(self.ARTICLE_INFO_PATH / self.INFO_FILE_NAME, 'a') as file:
-            logging.debug(f'Wrote Fox info ({info["id"]}) to file')
-            writer = csv.writer(file)
-            writer.writerow([info['url'],
-                             info['date'],
-                             info['title']])
 
     @staticmethod
     def form_query(query, min_date, max_date, start):
@@ -439,6 +326,12 @@ class FOX(scrapy.Spider, ArticleSource):
                         '112'])
 
 
+def start_process(spider, **kwargs):
+    process = CrawlerProcess()
+    process.crawl(spider, **kwargs)
+    process.start()
+
+
 if __name__ == "__main__":
 
     choice = input("Which news company would you like to scrape?\n"
@@ -446,16 +339,13 @@ if __name__ == "__main__":
                    "2. Fox News\n"
                    "3. NYTimes\n"
                    "4. (in future) Debug Mode\n")
-    process = CrawlerProcess()
+    session = get_session(get_engine(LOCAL_POSTGRESQL_URL))
     if int(choice) == 1:
-        process.crawl(CNN)
+        start_process(CNN, session=session)
     elif int(choice) == 2:
-        process.crawl(FOX)
+        start_process(FOX, session=session)
     elif int(choice) == 3:
-        process.crawl(NYT)
+        start_process(NYT, session=session)
     else:
         pass
-    try:
-        process.start()
-    finally:
-        pass
+    session.close()
