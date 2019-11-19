@@ -68,8 +68,7 @@ def add_row_to_db(session, Article, url, datetime, title, news_co, text=''):
     session.commit()
     return True
 
-
-def transfer_from_csv(csv_filepath):
+def transfer_from_csv(session, csv_filepath, news_co):
     info = pd.read_csv(csv_filepath, header=None, usecols=USE_COLS, parse_dates=[DATE_COL])
 
     for row_num in range(info.shape[0]):
