@@ -7,7 +7,8 @@ class TextBlobAnalyzer:
     def __init__(self):
         pass
 
-    def evaluate(self, texts, inc_subj=False, naive=False):
+    @staticmethod
+    def evaluate(texts, all_info=False, naive=False):
         """
         Return list of sentiments in same order as texts
         :param naive: Set to true to use the NaiveBayesAnalyzer, an NLTK classifier trained on movie reviews
@@ -15,10 +16,10 @@ class TextBlobAnalyzer:
         :return: list of sentiment scores. Each score is a named tuple for polarity and subjectivity
         """
         if naive:
-            return [self.nb_analyzer(text, inc_subj=inc_subj) for text in texts]
+            return [TextBlobAnalyzer.nb_analyzer(text, all_info=all_info) for text in texts]
 
         sentiments = [TextBlob(text).sentiment for text in texts]
-        if inc_subj:
+        if all_info:
             return [(senti.polarity, senti.subjectivity) for senti in sentiments]
         return [sentiment.polarity for sentiment in sentiments]
 
