@@ -13,7 +13,6 @@ pip install keras==2.0.9
 Compatible with: spaCy v2.0.0+
 """
 import os
-import csv
 
 import plac
 import random
@@ -113,7 +112,7 @@ def get_features(docs, max_length):
 
 class LSTMAnalyzer:
 
-    def __init__(self, model_dir):
+    def __init__(self, model_dir='lstm_models'):
         self.model_dir = model_dir
         self.model = None
 
@@ -154,7 +153,9 @@ class LSTMAnalyzer:
         self.model = model
 
     def evaluate(self, model_dir, texts, max_length=100):
+        model_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__))) / pathlib.Path(model_dir)
         nlp = spacy.load("en_vectors_web_lg")
+        nlp.add_pipe(nlp.create_pipe('sentencizer'))
         nlp.add_pipe(SentimentAnalyser.load(model_dir, nlp, max_length=max_length))
 
         return [doc.sentiment for doc in nlp.pipe(texts, batch_size=1000)]
