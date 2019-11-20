@@ -23,8 +23,8 @@ class TextBlobAnalyzer:
         return [sentiment.polarity for sentiment in sentiments]
 
     @staticmethod
-    def nb_analyzer(text, inc_subj=False):
-        sentiment = TextBlob(text, analyzer=NaiveBayesAnalyzer).sentiment
-        if inc_subj:
-            return sentiment.polarity, sentiment.subjectivity
-        return sentiment.polarity
+    def nb_analyzer(text, all_info=False):
+        sentiment = TextBlob(text, analyzer=NaiveBayesAnalyzer()).sentiment
+        if all_info:
+            return sentiment.classification, sentiment.p_pos, sentiment.p_neg
+        return sentiment.classification
