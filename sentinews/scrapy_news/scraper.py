@@ -1,20 +1,21 @@
-import csv
 import logging
 import json
-import pathlib
+import os
 from datetime import datetime
 from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
 
 import scrapy
 import requests
-from database import add_row_to_db, get_session, get_urls, in_table
 from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
 
+from sentinews.database.database import add_row_to_db, get_session
+
 logging.basicConfig(level=logging.INFO)
 
-LOCAL_POSTGRESQL_URL = 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
+LOCAL_PGSQL_URL = os.environ.get('DATABASE_URL')
+#'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
 
 # todo: have an interactive query
@@ -343,7 +344,7 @@ if __name__ == "__main__":
                    "2. Fox News\n"
                    "3. NYTimes\n"
                    "4. (in future) Debug Mode\n")
-    session = get_session(LOCAL_POSTGRESQL_URL)
+    session = get_session(LOCAL_PGSQL_URL)
     if int(choice) == 1:
         start_process(CNN, session=session)
     elif int(choice) == 2:
