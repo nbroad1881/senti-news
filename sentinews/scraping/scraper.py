@@ -5,6 +5,7 @@ from datetime import datetime
 from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
 
+from dotenv import load_dotenv
 import scrapy
 import requests
 from bs4 import BeautifulSoup
@@ -12,6 +13,7 @@ from scrapy.crawler import CrawlerProcess
 
 from sentinews.database.database import add_row_to_db, get_session
 
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 LOCAL_PGSQL_URL = os.environ.get('DATABASE_URL')
@@ -344,7 +346,7 @@ if __name__ == "__main__":
                    "2. Fox News\n"
                    "3. NYTimes\n"
                    "4. (in future) Debug Mode\n")
-    session = get_session(LOCAL_PGSQL_URL)
+    session = get_session(os.environ.get('DATABASE_URL'))
     if int(choice) == 1:
         start_process(CNN, session=session)
     elif int(choice) == 2:
