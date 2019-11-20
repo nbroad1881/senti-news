@@ -1,5 +1,3 @@
-import pathlib
-
 import pandas as pd
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, DateTime, Text, create_engine
@@ -95,6 +93,6 @@ if __name__ == '__main__':
                    "4. (in future) Debug Mode\n")
     if choice in CHOICE_DICT:
         news = CHOICE_DICT[choice]
-        path = pathlib.Path(BASE_PATH.format(news, news))
+        path = BASE_PATH.format(news, news)
         transfer_from_csv(session, path, NEWS_CO_DICT[choice])
     session.close()
