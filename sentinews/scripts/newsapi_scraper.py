@@ -10,13 +10,13 @@ logging.basicConfig(level=logging.INFO)
 # Init
 newsapi = NewsApiClient(api_key='f725be960d5c4ed9937f84cef2620702')
 
-candidates = ['Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
+candidates = ['Donald Trump', 'Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
 PAGE_SIZE = 100
 NEWSAPI_CSV = pathlib.Path('NEWSAPI.csv')
 NEWSAPI_NEW_CSV = pathlib.Path('NEWSAPI_NEW.csv')
 SOURCE_GROUP_SIZE = 6
 
-all_sources = ['abc-news', 'associated-press', 'bbc-news', 'cbc-news', 'cnbc', 'cnn', 'fox-news', 'msnbc', 'nbc-news',
+sources = ['abc-news', 'associated-press', 'bbc-news', 'cbc-news', 'cnbc', 'cnn', 'fox-news', 'msnbc', 'nbc-news',
                'newsweek', 'politico', 'reuters,the-hill,the-american-conservative', 'the-huffington-post',
                'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time,usa-today', 'vice-news']
 
