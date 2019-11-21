@@ -1,242 +1,355 @@
-import scrapy
-from scrapy.crawler import CrawlerProcess
-import json
-import datetime
 import csv
-import requests
-import time
+import logging
+import json
+import pathlib
+from datetime import datetime
+from dateutil.parser import isoparse
+from abc import ABC, abstractmethod
 
-CNN_RESULTS_SIZE = 100
-DEM_CANDIDATES = ['biden', 'warren', 'sanders', 'harris', 'buttigieg']
+import scrapy
+import requests
+from database import add_row_to_db, get_session, get_urls, in_table
+from bs4 import BeautifulSoup
+from scrapy.crawler import CrawlerProcess
+
+logging.basicConfig(level=logging.INFO)
+
+LOCAL_POSTGRESQL_URL = 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
 
 # todo: have an interactive query
 #     database for text documents
-def scrape_fox(response, date='', title=''):
-    with open('fox_articles.csv', 'a') as f:
-        writer = csv.writer(f)
-        writer.writerow([date, title, ' '.join(response.xpath('//div[(@class="article-body")]//p/text()|//div['
-                                                              '@class="article-body"]//p/a/text()').getall())])
+
+class ArticleSource(ABC):
+    CANDIDATE_DICT = {
+        '1': 'Donald Trump',
+        '2': 'Joe Biden',
+        '3': 'Elizabeth Warren',
+        '4': 'Bernie Sanders',
+        '5': 'Kamala Harris',
+        '6': 'Pete Buttigieg'
+    }
+
+    def __init__(self, session):
+        self.session = session
+        self.articles_logged = 0
+
+    @abstractmethod
+    def ask_for_query(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def form_query(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def make_api_call(self, *args, **kwargs):
+        pass
+
+    def store_info(self, url, date, title, news_co, text):
+        logged = add_row_to_db(self.session, url, date, title, news_co, text)
+        if logged:
+            self.articles_logged += 1
+            logging.info(f"Stored #{self.articles_logged} in db: {url}, {date}, {title}")
+
+    def improper_title(self, title):
+        names = ['trump', 'biden', 'warren', 'sanders', 'harris', 'buttigieg']
+        return sum([1 if name in title.lower() else 0 for name in names]) != 1
 
 
-class NewsSpider(scrapy.Spider):
-    """Spider to grab news article text
-    """
-    name = 'scrape-news'
 
-    def __init__(self, start_urls=[], unq_ids=set()):
-        """
+class NYT(scrapy.Spider, ArticleSource):
+    NEWS_CO = 'New York Times'
 
-        :type start_urls: List(str)
-        """
-        super().__init__()
-        self.start_urls = start_urls
-        self.unq_ids = unq_ids
+    # todo: handle rate
+    custom_settings = {
+        'CONCURRENT_REQUESTS': 2,
+        'DOWNLOAD_DELAY': 2
+    }
 
-    def parse(self, response):
-        if 'angular' in response.text[:30]:
-            d = json.loads(response.text[21:-1])
-            fox_info = get_fox_info(d['response'])
-            for d, t, u, i in fox_info:
-                if u[0] in self.unq_ids or i != 'article':
+    name = 'NYT'
+
+    def __init__(self, **kwargs):
+        ArticleSource.__init__(self, **kwargs)
+
+    def ask_for_query(self):
+        query = input("Which candidate?\n"
+                      "1. Donald Trump\n"
+                      "2. Joe Biden\n"
+                      "3. Elizabeth Warren\n"
+                      "4. Bernie Sanders\n"
+                      "5. Kamala Harris\n"
+                      "6. Pete Buttigieg\n")
+        if query not in self.CANDIDATE_DICT:
+            return self.ask_for_query()
+        candidate = self.CANDIDATE_DICT[query]
+        begin_date = input('What is the oldest date? (YYYYMMDD): ')
+        end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
+        end_date = end_date if len(end_date > 1) else datetime.utcnow().isoformat()[:10]
+        return candidate, begin_date, end_date
+
+    def start_requests(self):
+        query, begin_date, end_date = self.ask_for_query()
+        all_urls = []
+        all_info = []
+        for p in range(10):
+            api_url = self.form_query(query=query, page=p, begin_date=begin_date, end_date=end_date)
+            urls, info = self.make_api_call(api_url)
+
+            if urls is not None:
+                all_urls.extend(urls)
+                all_info.extend(info)
+
+        for url, info in zip(all_urls, all_info):
+            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(info=info))
+
+    # todo: not violate LSP
+    def parse(self, response, info):
+        # todo: check for bad responses
+
+        soup = BeautifulSoup(response.text)
+        texts = []
+        for paragraphs in soup.select('section.meteredContent p'):
+            texts.append(paragraphs.text)
+        body = ' '.join(texts)
+
+        self.store_info(url=info['url'], date=info['date'], title=info['title'], news_co=self.NEWS_CO, text=body)
+
+    def make_api_call(self, api_url):
+        logging.debug(f'api_url:{api_url}')
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            start_urls = []
+            info = []
+            for doc in json.loads(response.text)['response']['docs']:
+                url = doc['web_url']
+                date = doc['pub_date']
+                title = doc['headline']['main']
+
+                if self.improper_title(title):
                     continue
-                yield scrapy.Request(u[0], callback=scrape_fox, cb_kwargs=dict(date=d, title=t))
-                self.unq_ids.add(u[0])
-        elif 'New York Times' in response.text[:100]:
-            print('scraping nyt')
-            d = json.loads(response.text)
-            nyt_info = get_nyt_info(d['response']['docs'])
-            for url, dt, _id in nyt_info:
-                print(f'url:{url}\ndate:{dt}\nid:{_id}')
-                time.sleep(6)
-                yield scrapy.Request(url, callback=scrape_nyt, cb_kwargs=dict(date=dt, _id=_id))
+
+                start_urls.append(url)
+                info.append({
+                    'url': url,
+                    'date': date,
+                    'title': title,
+                })
+
+            return start_urls, info
+        logging.debug(f'Response status code:{response.status_code}')
+        return None, None
+
+    @staticmethod
+    def form_query(query, page, begin_date='20190301', end_date='20191001', sort='newest'):
+        return ''.join([f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}',
+                        f'&facet=true&page={str(page)}&begin_date={begin_date}&end_date={end_date}',
+                        f'&facet_fields=document_type&fq=article',
+                        f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'])
+
+    def start_crawl(self, **kwargs):
+        process = CrawlerProcess()
+        process.crawl(self, **kwargs)
 
 
-#   i.e the 2nd page starts at start=10, 3rd page at start=20
-def form_fox_query(q, min_date, max_date, start):
-    s_1 = 'https://api.foxnews.com/v1/content/search?q='
-    q = q
-    s_2 = '&fields=date,description,title,url,image,type,taxonomy&section.path=fnc&type=article&min_date='
-    min_dt = min_date
-    s_3 = '&max_date='
-    max_dt = max_date
-    s_4 = '&start='
-    start = str(start)
-    s_5 = '&callback=angular.callbacks._0&cb='
-    dt_today = datetime.date.today().isoformat().replace('-', '')
-    s_6 = '112'
-    return ''.join([s_1, q, s_2, min_dt, s_3, max_dt, s_4, start, s_5, dt_today, s_6])
+class CNN(scrapy.Spider, ArticleSource):
+    RESULTS_SIZE = 100
 
+    NEWS_CO = 'CNN'
+    name = 'CNN'
 
-# todo: writes text to file
-def scrape_nyt(response, date, _id):
-    title = response.xpath('./head/title//text()').get()
-    body = response.xpath('//section[contains(@name, "articleBody")]//text()').getall()
-    with open('nyt_articles.csv', 'a') as f:
-        print('wrote to file')
-        writer = csv.writer(f)
-        writer.writerow([date, title, _id, ' '.join(body)])
+    def __init__(self, **kwargs):
+        ArticleSource.__init__(self, **kwargs)
 
+    def ask_for_query(self):
+        query = input("Which candidate?\n"
+                      "1. Donald Trump\n"
+                      "2. Joe Biden\n"
+                      "3. Elizabeth Warren\n"
+                      "4. Bernie Sanders\n"
+                      "5. Kamala Harris\n"
+                      "6. Pete Buttigieg\n")
+        if query not in self.CANDIDATE_DICT:
+            return self.ask_for_query()
+        candidate = self.CANDIDATE_DICT[query].replace(' ', '%20')
+        begin_date = input('What is the oldest date? (YYYYMMDD): ') + "T00:00:00Z"
+        end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
+        if len(end_date) > 1:
+            end_date = end_date + "T23:59:59Z"
+        else:
+            end_date = datetime.utcnow().isoformat(timespec='seconds')+'Z'
+        return candidate, begin_date, end_date
 
-def scrape_cnn(unq_ids, _from=0, name=''):
-    """Searches cnn for name, saving articles that are not in the unique
-    id set. Ordered by newest, rather than by relevance. Relevance produces
-    results from 2017 first"""
-    url = f'https://search.api.cnn.io/content?size={CNN_RESULTS_SIZE}' \
-          f'&q={name}&type=article&sort=newest&from={str(_from)}'
-    response = requests.get(url)
-    if response.status_code == 200:
-        print(f'Request accepted ({name}), from={_from}')
-        if _from > 1000:
-            return
+    def start_requests(self):
+        query, begin_date, end_date = self.ask_for_query()
+        api_url = self.form_query(query, page=1)
+        num_results = self.make_api_call(api_url)
+
+        for p in range(1, num_results // self.RESULTS_SIZE):
+            url = self.form_query(query, page=p)
+            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(begin_date=begin_date, end_date=end_date))
+
+    def parse(self, response, begin_date, end_date):
+
         articles = json.loads(response.text)['result']
-        num_results = json.loads(response.text)['meta']['of']
-        with open('../saved_texts/cnn_articles.csv', 'a') as f:
-            writer = csv.writer(f)
-            for a in articles:
-                if a['type'] != 'article' or a['_id'] in unq_ids:
+        for a in articles:
+            if a['type'] != 'article':
+                continue
+
+            url = a['url']
+            date = a['firstPublishDate']
+            title = a['headline']
+            body = a['body']
+
+            if self.improper_title(title):
+                continue
+
+            article_datetime = isoparse(date)
+            begin_datetime = isoparse(begin_date)
+            end_datetime = isoparse(end_date)
+
+            if article_datetime < begin_datetime or article_datetime > end_datetime:
+                continue
+
+            self.store_info(url, date, title, self.NEWS_CO, body)
+
+    def make_api_call(self, api_url):
+        """
+        Calls CNN API and returns the number of results.
+        Using requests library would be sufficient, but for
+        consistency Scrapy will be used.
+        :param api_url:
+        :return:
+        """
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            logging.debug('Request accepted (200)')
+            return json.loads(response.text)['meta']['of']
+        else:
+            logging.debug(f'Request denied ({response.status_code})')
+
+    def form_query(self, query, page):
+        return f'https://search.api.cnn.io/content?size={self.RESULTS_SIZE}' \
+               f'&q={query}&type=article&sort=relevance&page={page}&from={str(page * self.RESULTS_SIZE)}'
+
+
+class FOX(scrapy.Spider, ArticleSource):
+    PAGE_SIZE = 10
+    NUM_PAGES = 10
+
+    NEWS_CO = 'FOX News'
+    name = 'Fox'
+
+    def __init__(self, **kwargs):
+        ArticleSource.__init__(self, **kwargs)
+
+    def ask_for_query(self):
+        query = input("Which candidate?\n"
+                      "1. Donald Trump\n"
+                      "2. Joe Biden\n"
+                      "3. Elizabeth Warren\n"
+                      "4. Bernie Sanders\n"
+                      "5. Kamala Harris\n"
+                      "6. Pete Buttigieg\n")
+        if query not in self.CANDIDATE_DICT:
+            return self.ask_for_query()
+        candidate = self.CANDIDATE_DICT[query].replace(' ', '+')
+        begin_date = input('What is the oldest date? (YYYYMMDD): ')
+        begin_date = '-'.join([begin_date[:4], begin_date[4:6], begin_date[6:8]])
+        end_date = input('What is the newest date? (YYYYMMDD or nothing for today): ')
+        if len(end_date) > 1:
+            end_date = '-'.join([end_date[:4], end_date[4:6], end_date[6:8]])
+        else:
+            end_date = datetime.utcnow().isoformat()[:10]
+        return candidate, begin_date, end_date
+
+    def start_requests(self):
+        query, min_date, max_date = self.ask_for_query()
+
+        all_urls, all_info = [], []
+        for start in range(0,
+                           self.PAGE_SIZE * self.NUM_PAGES,
+                           self.PAGE_SIZE):
+            api_url = self.form_query(query, min_date=min_date, max_date=max_date, start=start)
+            urls, info = self.make_api_call(api_url)
+
+            all_urls.extend(urls)
+            all_info.extend(info)
+
+        for url, info in zip(all_urls, all_info):
+            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(info=info))
+
+    def parse(self, response, info):
+
+        soup = BeautifulSoup(response.text)
+        paragraphs = soup.select('div.article-body p')
+        texts = []
+        for p in paragraphs:
+            if not p.find('em') and not p.find('strong') and not p.find('span'):
+                texts.append(p.text)
+
+        body = ' '.join(texts)
+
+        self.store_info(url=info['url'], date=info['date'], title=info['title'], news_co=self.NEWS_CO, text=body)
+
+    def make_api_call(self, api_url):
+        """
+        Calls FOX API .
+        Using the requests library would be sufficient, but for
+        consistency Scrapy will be used. Requests used once to get
+        the urls and info.
+        :param api_url:
+        :return:
+        """
+        response = requests.get(api_url)
+        if response.status_code == 200:
+            urls, infos = [], []
+
+            text = json.loads(response.text[21:-1])['response']
+            for d in text['docs']:
+                info = {
+                    'date': d['date'],
+                    'title': d['title'],
+                    'url': d['url'][0],
+                }
+                if self.improper_title(info['title']):
                     continue
-                writer.writerow([a['firstPublishDate'], a['headline'], a['url'], a['_id'], a['body']])
-                unq_ids.add(a['_id'])
-        if _from + CNN_RESULTS_SIZE < num_results:
-            scrape_cnn(unq_ids, _from=_from + CNN_RESULTS_SIZE, name=name)
+
+                urls.append(info['url'])
+                infos.append(info)
+            return urls, infos
+        else:
+            return None
+
+    @staticmethod
+    def form_query(query, min_date, max_date, start):
+        return ''.join([f'https://api.foxnews.com/v1/content/search?q={query}',
+                        f'&fields=date,description,title,url,image,type,taxonomy',
+                        f'&section.path=fnc&type=article&min_date={min_date}',
+                        f'&max_date={max_date}&start={start}&callback=angular.callbacks._0&cb=',
+                        '112'])
 
 
-def get_unique_cnn_ids():
-    """Returns a set of unique cnn article ids"""
-    try:
-        with open('cnn_ids.csv', 'r') as f:
-            reader = csv.reader(f)
-            ids = set()
-            for row in reader:
-                ids.update(row)
-            return ids
-    except FileNotFoundError:
-        print('cnn_ids.csv does not exist yet, returning empty set')
-        return set()
-
-
-def get_unique_fox_ids():
-    """Returns a set of unique fox article ids.
-    There are no actual id tag for fox articles,
-    so this treats each url as a unique id
-    """
-    try:
-        with open('fox_ids.csv', 'r') as f:
-            reader = csv.reader(f)
-            ids = set()
-            for row in reader:
-                ids.update(row)
-            return ids
-    except FileNotFoundError:
-        print('fox_ids.csv does not exist yet, returning empty set')
-        return set()
-
-
-def set_unique_cnn_ids(unq_ids):
-    """Stores the unique article ids in a csv
-    Always overwrites"""
-    with open('cnn_ids.csv', 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(list(unq_ids))
-
-
-def set_unique_fox_ids(unq_ids):
-    """Stores the unique article urls in a csv
-    Always overwrites"""
-    with open('fox_ids.csv', 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(list(unq_ids))
-
-
-def get_fox_info(res):
-    """Pulls date, title, and url from API response"""
-    urls = []
-    for d in res['docs']:
-        dt = d['date']
-        title = d['title']
-        url = d['url']
-        _type = d['type']
-        urls.append((dt, title, url, _type))
-    return urls
-
-
-def cnn():
-    cnn_ids = get_unique_cnn_ids()
-    for c in DEM_CANDIDATES:
-        scrape_cnn(unq_ids=cnn_ids, name=c)
-    set_unique_cnn_ids(cnn_ids)
-
-
-def fox_news():
-    dt_today = datetime.date.today().isoformat()
-
-    unq_ids = get_unique_fox_ids()
-    try:
-        for c in DEM_CANDIDATES:
-            start = form_fox_query('biden', '2019-01-01', dt_today, 0)
-            r = requests.get(start).text
-            j = json.loads(r[21:-1])
-            num_results = j['response']['numFound']
-            num_results = 1000 if num_results > 1000 else num_results
-            start_urls = [form_fox_query(c, '2019-03-01', dt_today, n) for n in range(0, num_results, 10)]
-            process = CrawlerProcess()
-            process.crawl(NewsSpider, start_urls=start_urls, unq_ids=unq_ids)
-            process.start()
-            set_unique_fox_ids(unq_ids)
-    except Exception as e:
-        print('e')
-        set_unique_fox_ids(unq_ids)
-
-
-def form_nyt_query(query, page, begin_date='20190301', end_date='20191001', sort='newest'):
-    s_1 = f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}'
-    s_2 = f'&face=true&page={str(page)}&begin_date={begin_date}&end_date={end_date}'
-    s_3 = f'fq=document_type%3Aarticle%20AND%20type_of_material%3ANews'
-    s_4 = f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'
-    return ''.join([s_1, s_2, s_3, s_4])
-
-
-# todo: have parameter be how many days back from today
-#   the search should be. subtract from datetime object
-def nyt():
-    for c in DEM_CANDIDATES:
-        date_today = datetime.date.today().isoformat().replace('-', '')
-        url = form_nyt_query(query=c, end_date=date_today, page=0)
-        r = requests.get(url)
-        num_results = json.loads(r.text)['response']['meta']['hits']
-        num_results = 1000 if num_results > 1000 else num_results
-        start_urls = [form_nyt_query(query=c, end_date=date_today, page=n) for n in range(num_results // 10)]
-        process = CrawlerProcess(settings={
-            'CONCURRENT_REQUESTS': 2,
-            'DOWNLOAD_DELAY' : 6
-        })
-        process.crawl(NewsSpider, start_urls=start_urls)
-        process.start()
-
-
-def get_nyt_info(docs):
-    info = []
-    for d in docs:
-        url = d['web_url']
-        dt = d['pub_date']
-        _id = d['_id']
-        info.append((url, dt, _id))
-    return info
+def start_process(spider, **kwargs):
+    process = CrawlerProcess()
+    process.crawl(spider, **kwargs)
+    process.start()
 
 
 if __name__ == "__main__":
 
-    response = input("Which news company would you like to scrape?\n"
-                     "1. CNN\n'\
-                     '2. Fox News\n'\
-                     '3. NYTimes\n'\
-                     '4. All of the above\n")
-    if int(response) == 1:
-        cnn()
-    elif int(response) == 2:
-        fox_news()
-    elif int(response) == 3:
-        nyt()
-    elif int(response) == 4:
+    choice = input("Which news company would you like to scrape?\n"
+                   "1. CNN\n"
+                   "2. Fox News\n"
+                   "3. NYTimes\n"
+                   "4. (in future) Debug Mode\n")
+    session = get_session(LOCAL_POSTGRESQL_URL)
+    if int(choice) == 1:
+        start_process(CNN, session=session)
+    elif int(choice) == 2:
+        start_process(FOX, session=session)
+    elif int(choice) == 3:
+        start_process(NYT, session=session)
+    else:
         pass
+    session.close()

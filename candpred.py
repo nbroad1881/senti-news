@@ -1,1 +1,0 @@
-from candpred import app
