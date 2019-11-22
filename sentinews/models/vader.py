@@ -6,6 +6,7 @@ class VaderAnalyzer:
     def __init__(self):
         pass
 
+    @staticmethod
     def evaluate(texts, all_scores=False):
         """
         Return list of sentiments in same order as texts
