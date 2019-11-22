@@ -15,7 +15,7 @@ from sentinews.database.database import add_row_to_db, get_session
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
-
+# todo: use urllib for posts
 LOCAL_PGSQL_URL = os.environ.get('DATABASE_URL')
 #'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
