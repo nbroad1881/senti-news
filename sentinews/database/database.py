@@ -1,16 +1,15 @@
-import pandas as pd
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, DateTime, Text, create_engine
 from sqlalchemy.orm import sessionmaker
 
-LOCAL_POSTGRESQL_URL = 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
+load_dotenv()
 
-BASE_PATH = '../saved_texts/{}/text_info/{}_INFO.csv'
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
-URL_COL = 0
-DATE_COL = 1
-TITLE_COL = 2
-USE_COLS = [URL_COL, DATE_COL, TITLE_COL]
+
 NEWS_CO_DICT = {
     '1': 'CNN',
     '2': 'Fox News',
@@ -71,18 +70,9 @@ def in_table(session, url):
     return session.query(Article).get(url) is not None
 
 
-def transfer_from_csv(session, csv_filepath, news_co):
-    info = pd.read_csv(csv_filepath, header=None, usecols=USE_COLS, parse_dates=[DATE_COL])
-
-    for row_num in range(info.shape[0]):
-        row = info.iloc[row_num, :]
-        url = row[URL_COL]
-        add_row_to_db(session, url=url, datetime=row[DATE_COL], title=row[TITLE_COL], news_co=news_co)
-
-
 if __name__ == '__main__':
-    engine = create_engine(LOCAL_POSTGRESQL_URL)
-    session = get_session(engine)
+    engine = create_engine(DATABASE_URL)
+    session = get_session(DATABASE_URL)
     if not engine.dialect.has_table(engine, 'articles'):
         create_article_table()
 
@@ -91,8 +81,4 @@ if __name__ == '__main__':
                    "2. Fox News\n"
                    "3. NYTimes\n"
                    "4. (in future) Debug Mode\n")
-    if choice in CHOICE_DICT:
-        news = CHOICE_DICT[choice]
-        path = BASE_PATH.format(news, news)
-        transfer_from_csv(session, path, NEWS_CO_DICT[choice])
     session.close()
