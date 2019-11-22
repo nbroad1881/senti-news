@@ -3,9 +3,9 @@ from textblob.sentiments import NaiveBayesAnalyzer
 
 
 class TextBlobAnalyzer:
+    """
 
-    def __init__(self):
-        pass
+    """
 
     @staticmethod
     def evaluate(texts, all_info=False, naive=False):
