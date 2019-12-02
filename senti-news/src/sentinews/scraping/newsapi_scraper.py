@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 news_api = NewsApiClient(api_key=os.environ.get('NEWS_API_KEY'))
 
 CANDIDATES = ['Donald Trump', 'Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
-qinTitle = '('+'), OR ('
+qinTitle = '('+') OR ('.join(CANDIDATES) + ')'
 PAGE_SIZE = 100
 MAX_DAYS_BACK = 30
 
@@ -74,7 +74,7 @@ class NewsAPIScraper:
                                                    sort_by='relevancy',
                                                    page=1,
                                                    page_size=PAGE_SIZE,
-                                                   qintitle=)
+                                                   qintitle=qinTitle)
             self.articles_to_df(all_articles, df)
 
 

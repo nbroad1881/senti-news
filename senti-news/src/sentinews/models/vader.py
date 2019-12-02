@@ -18,4 +18,4 @@ class VaderAnalyzer:
         scores = [analyzer.polarity_scores(text) for text in texts]
         if all_scores:
             return scores
-        return [score.get('compound') for score in scores]
+        return [dict(compound=score.get('compound')) for score in scores]

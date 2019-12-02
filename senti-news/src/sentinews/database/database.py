@@ -1,8 +1,8 @@
 import os
 
 from dotenv import load_dotenv
+from sqlalchemy import Column, String, DateTime, Text, Float, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, DateTime, Text, create_engine
 from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
@@ -32,11 +32,39 @@ class Article(Base):
     title = Column(Text)
     news_co = Column(String(50))
     text = Column(Text)
+    vader_positive = Column(Float)
+    vader_negative = Column(Float)
+    vader_neutral = Column(Float)
+    vader_compound = Column(Float)
+    textblob_polarity = Column(Float)
+    textblob_subjectivity = Column(Float)
+    textblob_classification = Column(String(10))
+    textblob_p_pos = Column(Float)
+    textblob_p_neg = Column(Float)
+    lstm_score = Column(Float)
+
+class Score(Base):
+    __tablename__ = 'scores'
+    url = Column(Text, primary_key=True)
+    vader_positive = Column(Float)
+    vader_negative = Column(Float)
+    vader_neutral = Column(Float)
+    vader_compound = Column(Float)
+    textblob_polarity = Column(Float)
+    textblob_subjectivity = Column(Float)
+    textblob_classification = Column(String(10))
+    textblob_p_pos = Column(Float)
+    textblob_p_neg = Column(Float)
+    lstm_score = Column(Float)
 
 
 def create_article_table():
+    engine = create_engine(DATABASE_URL)
     Base.metadata.create_all(engine)
 
+def create_scores_table():
+    engine = create_engine(DATABASE_URL)
+    Base.metadata.create_all(engine)
 
 def add_row_to_db(session, url, datetime, title, news_co, text=''):
     """

@@ -13,8 +13,8 @@ pip install keras==2.0.9
 Compatible with: spaCy v2.0.0+
 """
 import os
-
 import pathlib
+
 import cytoolz
 import numpy
 from keras.models import model_from_json
