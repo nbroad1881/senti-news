@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from sqlalchemy import Column, String, DateTime, Text, Float, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sentinews.models.vader import VaderAnalyzer
+from sentinews.models.textblob import TextBlobAnalyzer
 
 load_dotenv()
 
@@ -96,6 +98,62 @@ def get_urls(session):
 
 def in_table(session, url):
     return session.query(Article).get(url) is not None
+
+
+def updateArticle(article, url=None, datetime=None, title=None, news_co=None, text=None, vader_positive=None,
+                  vader_negative=None, vader_neutral=None, vader_compound=None, textblob_polarity=None,
+                  textblob_subjectivity=None, textblob_classification=None, textblob_p_pos=None, textblob_p_neg=None):
+    if url is not None: article.url = url
+    if datetime is not None: article.datetime = datetime
+    if title is not None: article.title = title
+    if news_co is not None: article.news_co = news_co
+    if text is not None: article.text = text
+    if vader_positive is not None: article.vader_positive = vader_positive
+    if vader_negative is not None: article.vader_negative = vader_negative
+    if vader_neutral is not None: article.vader_neutral = vader_neutral
+    if vader_compound is not None: article.vader_compound = vader_compound
+    if textblob_polarity is not None: article.textblob_polarity = textblob_polarity
+    if textblob_subjectivity is not None: article.textblob_subjectivity = textblob_subjectivity
+    if textblob_classification is not None: article.textblob_classification = textblob_classification
+    if textblob_p_pos is not None: article.textblob_p_pos = textblob_p_pos
+    if textblob_p_neg is not None: article.textblob_p_neg = textblob_p_neg
+
+
+def analyze_table(session):
+    start_time = time.perf_counter()
+    va = VaderAnalyzer()
+    end_time1 = time.perf_counter()
+    tb = TextBlobAnalyzer()
+    end_time2 = time.perf_counter()
+    results = session.query(Article). \
+        filter(or_(Article.vader_compound == None, Article.textblob_polarity == None)). \
+        all()
+    end_time3 = time.perf_counter()
+    # once = False
+    for row in results:
+        # if once: break
+        # else: once = True
+        title = row.title
+        vader_dict = va.evaluate([title], all_scores=True)[0]
+        tb_dict = tb.evaluate([title], all_scores=True)[0]
+        tb_nb_dict = tb.evaluate([title], all_scores=True, naive=True)[0]
+        updateArticle(row, vader_compound=vader_dict['compound'],
+                      vader_positive=vader_dict['pos'],
+                      vader_negative=vader_dict['neg'],
+                      vader_neutral=vader_dict['neu'],
+                      textblob_polarity=tb_dict['polarity'],
+                      textblob_subjectivity=tb_dict['subjectivity'],
+                      textblob_classification=tb_nb_dict['classification'],
+                      textblob_p_neg=tb_nb_dict['p_neg'],
+                      textblob_p_pos=tb_nb_dict['p_pos'])
+        print("updated "+title)
+        session.commit()
+        end_time4 = time.perf_counter()
+        logging.info(f"1:{end_time1-start_time}")
+        logging.info(f"2:{end_time2-end_time1}")
+        logging.info(f"3:{end_time3-end_time1}")
+        logging.info(f"4:{end_time4-end_time3}")
+    return results
 
 
 if __name__ == '__main__':
