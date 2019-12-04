@@ -1,4 +1,6 @@
 import os
+import time
+import logging
 
 from dotenv import load_dotenv
 from sqlalchemy import Column, String, DateTime, Text, Float, create_engine
