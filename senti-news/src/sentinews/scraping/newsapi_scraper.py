@@ -6,7 +6,7 @@ import logging
 import pandas as pd
 from dotenv import load_dotenv
 from newsapi import NewsApiClient
-from sentinews.database.database import get_session, add_row_to_db
+from sentinews.database.database import DataBase
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -38,9 +38,9 @@ SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'ass
            'reuters', 'the-hill', "the-hindu", 'the-american-conservative', 'the-huffington-post', "the-new-york-times",
            'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time', 'usa-today', 'vice-news']
 
-LIMITED_SOURCES = ['bbc-news',"breitbart-news",'cnn','fox-news',
-                   'politico','reuters', 'the-hill','the-american-conservative', 'the-huffington-post',
-                   "the-new-york-times", 'the-wall-street-journal', 'the-washington-post',]
+LIMITED_SOURCES = ['bbc-news', "breitbart-news", 'cnn', 'fox-news',
+                   'politico', 'reuters', 'the-hill', 'the-american-conservative', 'the-huffington-post',
+                   "the-new-york-times", 'the-wall-street-journal', 'the-washington-post', ]
 
 
 class NewsAPIScraper:
@@ -50,22 +50,22 @@ class NewsAPIScraper:
             self.sources = LIMITED_SOURCES
         else:
             self.sources = SOURCES
-
+        self.db = DataBase()
 
     def get_num_results(self):
         from_param = date.today() - timedelta(days=1)
         logging.info(f"query {QUERY}")
         logging.info(f"from {from_param}")
-        logging.info(f"src {self.no_space(','.join(self.sources))}")
-        logging.info(f"qintitle {self.no_space(Q_IN_TITLE)}")
+        logging.info(f"src {','.join(self.sources)}")
+        logging.info(f"qintitle {Q_IN_TITLE}")
         first_call = news_api.get_everything(q='DONALD TRUMP',
                                              language='en',
-                                             sources=self.no_space(','.join(SOURCES)),
+                                             sources=','.join(SOURCES),
                                              sort_by='relevancy',
                                              from_param=from_param,
                                              page=1,
-                                             page_size=1)
-                                             # qintitle=self.no_space(Q_IN_TITLE))
+                                             page_size=1,
+                                             qintitle=Q_IN_TITLE)
         if first_call['status'] == 'ok':
             logging.info(f'Num results since{from_param} : {first_call["totalResults"]}')
             return first_call['totalResults']
@@ -83,28 +83,26 @@ class NewsAPIScraper:
             to_param = from_param + timedelta(hours=2)
             # todo: handle rateLimited error
             results = news_api.get_everything(q=QUERY,
-                                                   language='en',
-                                                   sources=self.no_space(','.join(self.sources)),
-                                                   from_param=from_param,
-                                                   to=to_param,
-                                                   sort_by='relevancy',
-                                                   page=1,
-                                                   page_size=PAGE_SIZE,
-                                                   qintitle=self.no_space(Q_IN_TITLE))
+                                              language='en',
+                                              sources=','.join(self.sources),
+                                              from_param=from_param,
+                                              to=to_param,
+                                              sort_by='relevancy',
+                                              page=1,
+                                              page_size=PAGE_SIZE,
+                                              qintitle=Q_IN_TITLE)
             df = self.articles_to_df(results.get('articles'), df)
             self.dataframe_to_db(df)
 
-    @staticmethod
-    def dataframe_to_db(frame):
-        session = get_session()
+    def dataframe_to_db(self, frame):
         for index, row in frame.iterrows():
-            add_row_to_db(session,
-                          url=row['url'],
-                          datetime=row['datetime'],
-                          title=row['title'],
-                          news_co=row['news_co'],
-                          text=row['text'])
-            logging.info(f"Added {row['title']} to database")
+            result = self.db.add_row(url=row['url'],
+                                     datetime=row['datetime'],
+                                     title=row['title'],
+                                     news_co=row['news_co'],
+                                     text=row['text'])
+            if result:
+                logging.info(f"Added {row['title']} to database")
 
     def articles_to_df(self, articles, df):
         for article in articles:
@@ -129,10 +127,6 @@ class NewsAPIScraper:
             return False
         names = ['trump', 'biden', 'warren', 'sanders', 'harris', 'buttigieg']
         return sum([1 if name in title.lower() else 0 for name in names]) == 1
-
-    @staticmethod
-    def no_space(string):
-        return string.replace(' ', '%20')
 
 
 if __name__ == '__main__':
