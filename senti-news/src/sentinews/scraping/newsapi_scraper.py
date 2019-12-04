@@ -75,7 +75,7 @@ class NewsAPIScraper:
         num_iterations = (num_results // PAGE_SIZE) + 1
 
         # todo: have a way to determine how many steps to break it into
-        df = pd.DataFrame(columns=['URL', 'Datetime', 'Title', 'News_Co', 'Text'])
+        df = pd.DataFrame(columns=['url', 'datetime', 'title', 'news_co', 'text'])
 
         for hours_back in range(48, 1, -2):
             from_param = datetime.utcnow() - timedelta(hours=hours_back)
@@ -106,13 +106,27 @@ class NewsAPIScraper:
 
     def articles_to_df(self, articles, df):
         for article in articles:
-            df.append({
-                'URL': article.get('url'),
-                'Datetime': article.get('publishedAt'),
-                'Title': article.get('title'),
-                'News_Co': article.get('source').get('name'),
-                'Text': article.get('content')
-            }, ignore_index=True)
+            if self.proper_title(article.get('title')):
+                df = df.append({
+                    'url': article.get('url'),
+                    'datetime': isoparse(article.get('publishedAt')),
+                    'title': article.get('title'),
+                    'news_co': article.get('source').get('name'),
+                    'text': article.get('content')
+                }, ignore_index=True)
+        return df
+
+    @staticmethod
+    def proper_title(title):
+        """
+        Only want one key word in the title.
+        :param title: Title string to be checked
+        :return: True if it has one key word, false if it has zero or more than one.
+        """
+        if title is None or len(title) == 0:
+            return False
+        names = ['trump', 'biden', 'warren', 'sanders', 'harris', 'buttigieg']
+        return sum([1 if name in title.lower() else 0 for name in names]) == 1
 
     @staticmethod
     def no_space(string):
