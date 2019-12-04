@@ -10,10 +10,11 @@ Test if the models work as they should
 positive_sentence = "I'm having a wonderful day!"
 negative_sentence = "This was a monumental waste of my time!"
 neutral_sentence = "I am walking down the street."
+va = VaderAnalyzer()
 
-vader_pos = VaderAnalyzer.evaluate([positive_sentence], all_scores=False)
-vader_neg = VaderAnalyzer.evaluate([negative_sentence], all_scores=False)
-vader_neu = VaderAnalyzer.evaluate([neutral_sentence], all_scores=False)
+vader_pos = va.evaluate([positive_sentence], all_scores=False)
+vader_neg = va.evaluate([negative_sentence], all_scores=False)
+vader_neu = va.evaluate([neutral_sentence], all_scores=False)
 
 textblob_pos = TextBlobAnalyzer.evaluate([positive_sentence], all_info=True, naive=False)
 textblob_neg = TextBlobAnalyzer.evaluate([negative_sentence], all_info=True, naive=False)
