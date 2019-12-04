@@ -3,7 +3,7 @@ import time
 import logging
 
 from dotenv import load_dotenv
-from sqlalchemy import Column, String, DateTime, Text, Float, create_engine
+from sqlalchemy import Column, String, DateTime, Text, Float, create_engine, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sentinews.models.vader import VaderAnalyzer
