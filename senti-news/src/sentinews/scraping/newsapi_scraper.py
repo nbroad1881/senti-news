@@ -51,10 +51,14 @@ class NewsAPIScraper:
         else:
             self.sources = SOURCES
 
-    @staticmethod
-    def get_num_results(candidate):
-        from_param = dt.date.today() - dt.timedelta(days=MAX_DAYS_BACK)
-        first_call = news_api.get_everything(q=candidate,
+
+    def get_num_results(self):
+        from_param = date.today() - timedelta(days=1)
+        logging.info(f"query {QUERY}")
+        logging.info(f"from {from_param}")
+        logging.info(f"src {self.no_space(','.join(self.sources))}")
+        logging.info(f"qintitle {self.no_space(Q_IN_TITLE)}")
+        first_call = news_api.get_everything(q='DONALD TRUMP',
                                              language='en',
                                              sources=','.join(SOURCES),
                                              sort_by='relevancy',
@@ -62,6 +66,7 @@ class NewsAPIScraper:
                                              page=1,
                                              page_size=1)
         if first_call['status'] == 'ok':
+            logging.info(f'Num results since{from_param} : {first_call["totalResults"]}')
             return first_call['totalResults']
         return None
 
