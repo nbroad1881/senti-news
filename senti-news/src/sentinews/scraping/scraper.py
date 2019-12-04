@@ -177,7 +177,7 @@ class NYT(scrapy.Spider, ArticleSource):
 
 class CNN(scrapy.Spider, ArticleSource):
     RESULTS_SIZE = 100
-
+    NUM_PAGES = 5
     NEWS_CO = 'CNN'
     name = 'CNN'
 
@@ -264,7 +264,7 @@ class CNN(scrapy.Spider, ArticleSource):
 
     def form_query(self, query, page):
         return f'https://search.api.cnn.io/content?size={self.RESULTS_SIZE}' \
-               f'&q={query}&type=article&sort=relevance&page={page}&from={str(page * self.RESULTS_SIZE)}'
+               f'&q={query}&type=article&sort=newest&page={page}&from={str(page * self.RESULTS_SIZE)}'
 
 
 class FOX(scrapy.Spider, ArticleSource):
