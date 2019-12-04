@@ -26,7 +26,7 @@ DATABASE_URL = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
 # 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
 
-# todo: have an interactive query
+# todo: have an interactive QUERY
 #     database for text documents
 
 class ArticleSource(ABC):
@@ -65,7 +65,6 @@ class ArticleSource(ABC):
     def improper_title(self, title):
         names = ['trump', 'biden', 'warren', 'sanders', 'harris', 'buttigieg']
         return sum([1 if name in title.lower() else 0 for name in names]) != 1
-
 
 
 class NYT(scrapy.Spider, ArticleSource):
@@ -131,7 +130,7 @@ class NYT(scrapy.Spider, ArticleSource):
     def parse(self, response, info):
         # todo: check for bad responses
 
-        soup = BeautifulSoup(response.text)
+        soup = BeautifulSoup(response.text, 'html.parser')
         texts = []
         for paragraphs in soup.select('section.meteredContent p'):
             texts.append(paragraphs.text)
@@ -323,7 +322,7 @@ class FOX(scrapy.Spider, ArticleSource):
 
     def parse(self, response, info):
 
-        soup = BeautifulSoup(response.text)
+        soup = BeautifulSoup(response.text, 'html.parser')
         paragraphs = soup.select('div.article-body p')
         texts = []
         for p in paragraphs:
