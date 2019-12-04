@@ -295,7 +295,7 @@ class FOX(scrapy.Spider, ArticleSource):
             end_date = '-'.join([end_date[:4], end_date[4:6], end_date[6:8]])
         else:
             end_date = datetime.utcnow().isoformat()[:10]
-        return candidate, begin_date, end_date
+        return [candidate], begin_date, end_date
 
     def start_requests(self):
         if self.interactive:
@@ -374,6 +374,14 @@ class FOX(scrapy.Spider, ArticleSource):
 def start_process(spider, **kwargs):
     process = CrawlerProcess()
     process.crawl(spider, **kwargs)
+    process.start()
+
+
+def get_recent_articles():
+    process = CrawlerProcess()
+    process.crawl(NYT, interactive=False)
+    process.crawl(CNN, interactive=False)
+    process.crawl(FOX, interactive=False)
     process.start()
 
 
