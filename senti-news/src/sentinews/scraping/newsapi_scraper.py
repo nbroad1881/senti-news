@@ -35,15 +35,21 @@ SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'ass
            "medical-news-today", 'msnbc', 'nbc-news', "national-geographic", "national-review", "new-scientist",
            "news-com-au", "new-york-magazine", "next-big-future", "nfl-news", "the-globe-and-mail", "the-irish-times",
            "the-jerusalem-post", "the-lad-bible", "the-times-of-india", "the-verge", "wired", 'newsweek', 'politico',
-           'reuters', 'the-hill', "the-hindu", 'the-american-conservative', 'the-huffington-post', "the-new-york-times"
-                                                                                                   'the-wall-street-journal',
-           'the-washington-post', 'the-washington-times', 'time', 'usa-today', 'vice-news']
+           'reuters', 'the-hill', "the-hindu", 'the-american-conservative', 'the-huffington-post', "the-new-york-times",
+           'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time', 'usa-today', 'vice-news']
+
+LIMITED_SOURCES = ['bbc-news',"breitbart-news",'cnn','fox-news',
+                   'politico','reuters', 'the-hill','the-american-conservative', 'the-huffington-post',
+                   "the-new-york-times", 'the-wall-street-journal', 'the-washington-post',]
 
 
 class NewsAPIScraper:
 
-    def __init__(self):
-        pass
+    def __init__(self, limited):
+        if limited:
+            self.sources = LIMITED_SOURCES
+        else:
+            self.sources = SOURCES
 
     @staticmethod
     def get_num_results(candidate):
