@@ -125,6 +125,8 @@ class DataBase:
         if textblob_p_neg is not None: article.textblob_p_neg = textblob_p_neg
 
 
+    #todo: only talk to database once. have array of articles to upload all at once
+    # rather than one at a time
     def analyze_table(self):
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()

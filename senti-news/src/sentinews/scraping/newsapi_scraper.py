@@ -132,3 +132,4 @@ class NewsAPIScraper:
 if __name__ == '__main__':
     napi = NewsAPIScraper(limited=True)
     napi.get_titles()
+    napi.db.close_session()
