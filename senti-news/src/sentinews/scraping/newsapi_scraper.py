@@ -14,7 +14,9 @@ logging.basicConfig(level=logging.INFO)
 news_api = NewsApiClient(api_key=os.environ.get('NEWS_API_KEY'))
 
 CANDIDATES = ['Donald Trump', 'Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
-qinTitle = '('+') OR ('.join(CANDIDATES) + ')'
+LAST_NAMES = ['TRUMP', 'BIDEN', 'SANDERS', 'WARREN', 'HARRIS', 'BUTTIGIEG']
+QUERY = '(' + ') OR ('.join(CANDIDATES) + ')'
+Q_IN_TITLE = '(' + ') OR ('.join(LAST_NAMES) + ')'
 PAGE_SIZE = 100
 MAX_DAYS_BACK = 30
 
@@ -100,3 +102,12 @@ class NewsAPIScraper:
                 'News_Co': article.get('source').get('name'),
                 'Text': article.get('content')
             }, ignore_index=True)
+
+    @staticmethod
+    def no_space(string):
+        return string.replace(' ', '%20')
+
+
+if __name__ == '__main__':
+    napi = NewsAPIScraper(limited=True)
+    napi.get_titles()
