@@ -60,18 +60,19 @@ class NewsAPIScraper:
         logging.info(f"qintitle {self.no_space(Q_IN_TITLE)}")
         first_call = news_api.get_everything(q='DONALD TRUMP',
                                              language='en',
-                                             sources=','.join(SOURCES),
+                                             sources=self.no_space(','.join(SOURCES)),
                                              sort_by='relevancy',
                                              from_param=from_param,
                                              page=1,
                                              page_size=1)
+                                             # qintitle=self.no_space(Q_IN_TITLE))
         if first_call['status'] == 'ok':
             logging.info(f'Num results since{from_param} : {first_call["totalResults"]}')
             return first_call['totalResults']
         return None
 
-    def start(self, candidate):
-        num_results = self.get_num_results(candidate)
+    def get_titles(self):
+        num_results = self.get_num_results()
         num_iterations = (num_results // PAGE_SIZE) + 1
 
         # todo: have a way to determine how many steps to break it into
@@ -81,16 +82,17 @@ class NewsAPIScraper:
             from_param = datetime.utcnow() - timedelta(hours=hours_back)
             to_param = from_param + timedelta(hours=2)
             # todo: handle rateLimited error
-            all_articles = news_api.get_everything(q=candidate,
+            results = news_api.get_everything(q=QUERY,
                                                    language='en',
-                                                   sources=','.join(SOURCES),
-                                                   from_param=from_param.isoformat(),
-                                                   to=to_param.isoformat(),
+                                                   sources=self.no_space(','.join(self.sources)),
+                                                   from_param=from_param,
+                                                   to=to_param,
                                                    sort_by='relevancy',
                                                    page=1,
                                                    page_size=PAGE_SIZE,
-                                                   qintitle=qinTitle)
-            self.articles_to_df(all_articles, df)
+                                                   qintitle=self.no_space(Q_IN_TITLE))
+            df = self.articles_to_df(results.get('articles'), df)
+            self.dataframe_to_db(df)
 
     @staticmethod
     def dataframe_to_db(frame):
