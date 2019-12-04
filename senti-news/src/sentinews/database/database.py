@@ -17,7 +17,7 @@ PORT = os.environ.get('PORT')
 USER = os.environ.get('USERNAME')
 PW = os.environ.get('PASSWORD')
 DBNAME = os.environ.get('DBNAME')
-DATABASE_URI = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
+_DATABASE_URI = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
 
 NEWS_CO_DICT = {
     '1': 'CNN',
@@ -72,121 +72,98 @@ class DataBase:
 
     def __init__(self):
         self.session = self.get_session()
+        self.urls = set(self.get_urls())
 
     def get_session(self, database_url=None, echo=False):
         if database_url is None:
-            database_url = DATABASE_URI
+            database_url = _DATABASE_URI
         Session = sessionmaker(bind=create_engine(database_url, echo=echo))
         return Session()
+
     def add_row(self, url, datetime, title, news_co, text=''):
-def _create_article_table():
-    engine = create_engine(DATABASE_URI)
-    Base.metadata.create_all(engine)
+        if url in self.urls:
+            logging.info(f"{title} already in db -- skipping")
+            return False
+        article = Article(url=url, datetime=datetime, title=title, news_co=news_co, text=text)
+        self.session.add(article)
+        self.session.commit()
+        self.urls.add(url)
+
+    def _create_article_table(self):
+        engine = create_engine(_DATABASE_URI)
+        Base.metadata.create_all(engine)
 
 
-def _create_scores_table():
-    engine = create_engine(DATABASE_URI)
-    Base.metadata.create_all(engine)
+    def _create_scores_table(self):
+        engine = create_engine(_DATABASE_URI)
+        Base.metadata.create_all(engine)
+
+    def get_urls(self):
+        return [item[0] for item in self.session.query(Article.url).all()]
+
+    def in_table(self, url):
+        return url in self.urls
 
 
-def add_row_to_db(session, url, datetime, title, news_co, text=''):
-    """
-    Return true if successfully added, else false
-    :param session:
-    :param url:
-    :param datetime:
-    :param title:
-    :param news_co:
-    :param text:
-    :return:
-    """
-    if in_table(session, url):
-        return False
-    article = Article(url=url, datetime=datetime, title=title, news_co=news_co, text=text)
-    session.add(article)
-    session.commit()
-    return True
+    def updateArticle(self, article, url=None, datetime=None, title=None, news_co=None, text=None, vader_positive=None,
+                      vader_negative=None, vader_neutral=None, vader_compound=None, textblob_polarity=None,
+                      textblob_subjectivity=None, textblob_classification=None, textblob_p_pos=None, textblob_p_neg=None):
+        if url is not None:
+            article.url = url
+            self.urls.add(url)
+        if datetime is not None: article.datetime = datetime
+        if title is not None: article.title = title
+        if news_co is not None: article.news_co = news_co
+        if text is not None: article.text = text
+        if vader_positive is not None: article.vader_positive = vader_positive
+        if vader_negative is not None: article.vader_negative = vader_negative
+        if vader_neutral is not None: article.vader_neutral = vader_neutral
+        if vader_compound is not None: article.vader_compound = vader_compound
+        if textblob_polarity is not None: article.textblob_polarity = textblob_polarity
+        if textblob_subjectivity is not None: article.textblob_subjectivity = textblob_subjectivity
+        if textblob_classification is not None: article.textblob_classification = textblob_classification
+        if textblob_p_pos is not None: article.textblob_p_pos = textblob_p_pos
+        if textblob_p_neg is not None: article.textblob_p_neg = textblob_p_neg
 
 
+    def analyze_table(self):
+        start_time = time.perf_counter()
+        va = VaderAnalyzer()
+        end_time1 = time.perf_counter()
+        tb = TextBlobAnalyzer()
+        end_time2 = time.perf_counter()
+        results = self.session.query(Article). \
+            filter(or_(Article.vader_compound == None, Article.textblob_polarity == None)). \
+            all()
+        end_time3 = time.perf_counter()
+        for row in results:
+            title = row.title
+            vader_dict = va.evaluate([title], all_scores=True)[0]
+            tb_dict = tb.evaluate([title], all_scores=True)[0]
+            tb_nb_dict = tb.evaluate([title], all_scores=True, naive=True)[0]
+            self.updateArticle(row, vader_compound=vader_dict['compound'],
+                          vader_positive=vader_dict['pos'],
+                          vader_negative=vader_dict['neg'],
+                          vader_neutral=vader_dict['neu'],
+                          textblob_polarity=tb_dict['polarity'],
+                          textblob_subjectivity=tb_dict['subjectivity'],
+                          textblob_classification=tb_nb_dict['classification'],
+                          textblob_p_neg=tb_nb_dict['p_neg'],
+                          textblob_p_pos=tb_nb_dict['p_pos'])
+            self.session.commit()
+            end_time4 = time.perf_counter()
+            logging.info(f"Updated \"{title}\"")
+            logging.info(f"1:{end_time1-start_time}")
+            logging.info(f"2:{end_time2-end_time1}")
+            logging.info(f"3:{end_time3-end_time1}")
+            logging.info(f"4:{end_time4-end_time3}")
+        return results
 
-
-
-def get_urls(session):
-    return [item[0] for item in session.query(Article.url).all()]
-
-
-def in_table(session, url):
-    return session.query(Article).get(url) is not None
-
-
-def updateArticle(article, url=None, datetime=None, title=None, news_co=None, text=None, vader_positive=None,
-                  vader_negative=None, vader_neutral=None, vader_compound=None, textblob_polarity=None,
-                  textblob_subjectivity=None, textblob_classification=None, textblob_p_pos=None, textblob_p_neg=None):
-    if url is not None: article.url = url
-    if datetime is not None: article.datetime = datetime
-    if title is not None: article.title = title
-    if news_co is not None: article.news_co = news_co
-    if text is not None: article.text = text
-    if vader_positive is not None: article.vader_positive = vader_positive
-    if vader_negative is not None: article.vader_negative = vader_negative
-    if vader_neutral is not None: article.vader_neutral = vader_neutral
-    if vader_compound is not None: article.vader_compound = vader_compound
-    if textblob_polarity is not None: article.textblob_polarity = textblob_polarity
-    if textblob_subjectivity is not None: article.textblob_subjectivity = textblob_subjectivity
-    if textblob_classification is not None: article.textblob_classification = textblob_classification
-    if textblob_p_pos is not None: article.textblob_p_pos = textblob_p_pos
-    if textblob_p_neg is not None: article.textblob_p_neg = textblob_p_neg
-
-
-def analyze_table(session):
-    start_time = time.perf_counter()
-    va = VaderAnalyzer()
-    end_time1 = time.perf_counter()
-    tb = TextBlobAnalyzer()
-    end_time2 = time.perf_counter()
-    results = session.query(Article). \
-        filter(or_(Article.vader_compound == None, Article.textblob_polarity == None)). \
-        all()
-    end_time3 = time.perf_counter()
-    # once = False
-    for row in results:
-        # if once: break
-        # else: once = True
-        title = row.title
-        vader_dict = va.evaluate([title], all_scores=True)[0]
-        tb_dict = tb.evaluate([title], all_scores=True)[0]
-        tb_nb_dict = tb.evaluate([title], all_scores=True, naive=True)[0]
-        updateArticle(row, vader_compound=vader_dict['compound'],
-                      vader_positive=vader_dict['pos'],
-                      vader_negative=vader_dict['neg'],
-                      vader_neutral=vader_dict['neu'],
-                      textblob_polarity=tb_dict['polarity'],
-                      textblob_subjectivity=tb_dict['subjectivity'],
-                      textblob_classification=tb_nb_dict['classification'],
-                      textblob_p_neg=tb_nb_dict['p_neg'],
-                      textblob_p_pos=tb_nb_dict['p_pos'])
-        print("updated "+title)
-        session.commit()
-        end_time4 = time.perf_counter()
-        logging.info(f"1:{end_time1-start_time}")
-        logging.info(f"2:{end_time2-end_time1}")
-        logging.info(f"3:{end_time3-end_time1}")
-        logging.info(f"4:{end_time4-end_time3}")
-    return results
-
+    def close_session(self):
+        self.session.close()
 
 if __name__ == '__main__':
 
-    engine = create_engine(DATABASE_URI)
-    session = get_session(DATABASE_URI)
-
-    analyze_table(session)
-    if not engine.dialect.has_table(engine, 'articles'):
-        _create_article_table()
-
-    choice = input("Which news company would you like to transfer?\n"
-                   "1. CNN\n"
-                   "2. Fox News\n"
-                   "3. NYTimes\n"
-                   "4. (in future) Debug Mode\n")
-    session.close()
+    db = DataBase()
+    db.analyze_table()
+    db.close_session()
