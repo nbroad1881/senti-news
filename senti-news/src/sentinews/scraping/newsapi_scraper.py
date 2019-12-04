@@ -1,5 +1,6 @@
 import os
-from datetime import datetime as dt
+from datetime import datetime, date, timedelta
+from dateutil.parser import isoparse
 import logging
 
 import pandas as pd
@@ -62,9 +63,9 @@ class NewsAPIScraper:
         # todo: have a way to determine how many steps to break it into
         df = pd.DataFrame(columns=['URL', 'Datetime', 'Title', 'News_Co', 'Text'])
 
-        for days_back in range(MAX_DAYS_BACK, 1, -1):
-            from_param = dt.date.today() - dt.timedelta(days=days_back)
-            to_param = from_param + dt.timedelta(days=1)
+        for hours_back in range(48, 1, -2):
+            from_param = datetime.utcnow() - timedelta(hours=hours_back)
+            to_param = from_param + timedelta(hours=2)
             # todo: handle rateLimited error
             all_articles = news_api.get_everything(q=candidate,
                                                    language='en',
