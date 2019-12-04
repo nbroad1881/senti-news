@@ -1,5 +1,4 @@
 import os
-import time
 import logging
 
 from dotenv import load_dotenv
@@ -127,15 +126,11 @@ class DataBase:
 
 
     def analyze_table(self):
-        start_time = time.perf_counter()
         va = VaderAnalyzer()
-        end_time1 = time.perf_counter()
         tb = TextBlobAnalyzer()
-        end_time2 = time.perf_counter()
         results = self.session.query(Article). \
             filter(or_(Article.vader_compound == None, Article.textblob_polarity == None)). \
             all()
-        end_time3 = time.perf_counter()
         for row in results:
             title = row.title
             vader_dict = va.evaluate([title], all_scores=True)[0]
@@ -151,12 +146,7 @@ class DataBase:
                           textblob_p_neg=tb_nb_dict['p_neg'],
                           textblob_p_pos=tb_nb_dict['p_pos'])
             self.session.commit()
-            end_time4 = time.perf_counter()
-            logging.info(f"Updated \"{title}\"")
-            logging.info(f"1:{end_time1-start_time}")
-            logging.info(f"2:{end_time2-end_time1}")
-            logging.info(f"3:{end_time3-end_time1}")
-            logging.info(f"4:{end_time4-end_time3}")
+
         return results
 
     def close_session(self):
