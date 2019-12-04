@@ -10,14 +10,20 @@ import scrapy
 import requests
 from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
-
 from sentinews.database.database import add_row_to_db, get_session
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 # todo: use urllib for posts
-LOCAL_PGSQL_URL = os.environ.get('DATABASE_URL')
-#'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
+ENDPOINT = os.environ.get('ENDPOINT')
+PORT = os.environ.get('PORT')
+USER = os.environ.get('USERNAME')
+PW = os.environ.get('PASSWORD')
+DBNAME = os.environ.get('DBNAME')
+DATABASE_URL = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
+
+
+# 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
 
 # todo: have an interactive query
@@ -33,8 +39,8 @@ class ArticleSource(ABC):
         '6': 'Pete Buttigieg'
     }
 
-    def __init__(self, session):
-        self.session = session
+    def __init__(self, interactive):
+        self.session = get_session(DATABASE_URL)
         self.articles_logged = 0
 
     @abstractmethod
