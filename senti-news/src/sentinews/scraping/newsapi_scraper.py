@@ -5,7 +5,8 @@ import logging
 
 import pandas as pd
 from dotenv import load_dotenv
-from newsapi.newsapi_client import NewsApiClient
+from newsapi import NewsApiClient
+from sentinews.database.database import get_session, add_row_to_db
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -78,6 +79,17 @@ class NewsAPIScraper:
                                                    qintitle=qinTitle)
             self.articles_to_df(all_articles, df)
 
+    @staticmethod
+    def dataframe_to_db(frame):
+        session = get_session()
+        for index, row in frame.iterrows():
+            add_row_to_db(session,
+                          url=row['url'],
+                          datetime=row['datetime'],
+                          title=row['title'],
+                          news_co=row['news_co'],
+                          text=row['text'])
+            logging.info(f"Added {row['title']} to database")
 
     def articles_to_df(self, articles, df):
         for article in articles:
