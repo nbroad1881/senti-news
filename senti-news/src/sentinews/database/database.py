@@ -11,8 +11,13 @@ from sentinews.models.textblob import TextBlobAnalyzer
 
 load_dotenv()
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
-
+logging.basicConfig(level=logging.INFO)
+ENDPOINT = os.environ.get('ENDPOINT')
+PORT = os.environ.get('PORT')
+USER = os.environ.get('USERNAME')
+PW = os.environ.get('PASSWORD')
+DBNAME = os.environ.get('DBNAME')
+DATABASE_URI = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
 
 NEWS_CO_DICT = {
     '1': 'CNN',
@@ -46,6 +51,7 @@ class Article(Base):
     textblob_p_pos = Column(Float)
     textblob_p_neg = Column(Float)
     lstm_score = Column(Float)
+
 
 class Score(Base):
     __tablename__ = 'scores'
