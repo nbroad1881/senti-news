@@ -68,14 +68,26 @@ class Score(Base):
     lstm_score = Column(Float)
 
 
-def create_article_table():
-    engine = create_engine(DATABASE_URL)
+class DataBase:
+
+    def __init__(self):
+        self.session = self.get_session()
+
+    def get_session(self, database_url=None, echo=False):
+        if database_url is None:
+            database_url = DATABASE_URI
+        Session = sessionmaker(bind=create_engine(database_url, echo=echo))
+        return Session()
+    def add_row(self, url, datetime, title, news_co, text=''):
+def _create_article_table():
+    engine = create_engine(DATABASE_URI)
     Base.metadata.create_all(engine)
 
 
 def _create_scores_table():
     engine = create_engine(DATABASE_URI)
     Base.metadata.create_all(engine)
+
 
 def add_row_to_db(session, url, datetime, title, news_co, text=''):
     """
@@ -96,9 +108,7 @@ def add_row_to_db(session, url, datetime, title, news_co, text=''):
     return True
 
 
-def get_session(database_url, echo=False):
-    Session = sessionmaker(bind=create_engine(database_url, echo=echo))
-    return Session()
+
 
 
 def get_urls(session):
