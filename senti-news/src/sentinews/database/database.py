@@ -72,8 +72,9 @@ def create_article_table():
     engine = create_engine(DATABASE_URL)
     Base.metadata.create_all(engine)
 
-def create_scores_table():
-    engine = create_engine(DATABASE_URL)
+
+def _create_scores_table():
+    engine = create_engine(DATABASE_URI)
     Base.metadata.create_all(engine)
 
 def add_row_to_db(session, url, datetime, title, news_co, text=''):
@@ -165,10 +166,13 @@ def analyze_table(session):
 
 
 if __name__ == '__main__':
-    engine = create_engine(DATABASE_URL)
-    session = get_session(DATABASE_URL)
+
+    engine = create_engine(DATABASE_URI)
+    session = get_session(DATABASE_URI)
+
+    analyze_table(session)
     if not engine.dialect.has_table(engine, 'articles'):
-        create_article_table()
+        _create_article_table()
 
     choice = input("Which news company would you like to transfer?\n"
                    "1. CNN\n"
