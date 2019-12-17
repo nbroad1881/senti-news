@@ -34,13 +34,7 @@ class SentimentAnalyser(object):
         with (path / "model").open("rb") as file_:
             lstm_weights = pickle.load(file_)
         embeddings = cls.get_embeddings(nlp.vocab)
-        embeddings = embeddings.astype('float16')
-
-        tf.keras.backend.set_floatx('float16')
-        small_weights = [w.astype(tf.keras.backend.floatx()) for w in lstm_weights]
-
-        model.set_weights([embeddings] + small_weights)
-        # model.set_weights([embeddings] + lstm_weights)
+        model.set_weights([embeddings] + lstm_weights)
 
         save_model(model, 'small3', save_format='tf')
         return cls(model, max_length=max_length)
