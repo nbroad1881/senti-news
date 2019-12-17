@@ -17,7 +17,8 @@ import pathlib
 
 import cytoolz
 import numpy
-from keras.models import model_from_json
+from tensorflow.keras.models import model_from_json, save_model
+import tensorflow as tf
 from spacy.compat import pickle
 import spacy
 from fastai.text import load_learner
@@ -28,12 +29,20 @@ class SentimentAnalyser(object):
 
     @classmethod
     def load(cls, path, nlp, max_length=100):
-        with (path / "config.json").open() as file_:
+        with (path / "config_no_dropout.json").open() as file_:
             model = model_from_json(file_.read())
         with (path / "model").open("rb") as file_:
             lstm_weights = pickle.load(file_)
         embeddings = cls.get_embeddings(nlp.vocab)
-        model.set_weights([embeddings] + lstm_weights)
+        embeddings = embeddings.astype('float16')
+
+        tf.keras.backend.set_floatx('float16')
+        small_weights = [w.astype(tf.keras.backend.floatx()) for w in lstm_weights]
+
+        model.set_weights([embeddings] + small_weights)
+        # model.set_weights([embeddings] + lstm_weights)
+
+        save_model(model, 'small3', save_format='tf')
         return cls(model, max_length=max_length)
 
     def __init__(self, model, max_length=100):
@@ -95,7 +104,6 @@ class LSTMAnalyzer:
 
     # todo: have it setup before calling evaluate
     def evaluate(self, texts):
-
         return [doc.sentiment for doc in self.nlp.pipe(texts, batch_size=1000)]
 
 
