@@ -7,6 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sentinews.models.vader import VaderAnalyzer
 from sentinews.models.textblob import TextBlobAnalyzer
+from sentinews.models.lstm import LSTMAnalyzer2
 
 load_dotenv()
 
@@ -50,6 +51,10 @@ class Article(Base):
     textblob_p_pos = Column(Float)
     textblob_p_neg = Column(Float)
     lstm_score = Column(Float)
+    lstm_category = Column(String(15))
+    lstm_p_neu = Column(Float)
+    lstm_p_pos = Column(Float)
+    lstm_p_neg = Column(Float)
 
 
 class Score(Base):
@@ -92,7 +97,6 @@ class DataBase:
         engine = create_engine(_DATABASE_URI)
         Base.metadata.create_all(engine)
 
-
     def _create_scores_table(self):
         engine = create_engine(_DATABASE_URI)
         Base.metadata.create_all(engine)
@@ -103,10 +107,10 @@ class DataBase:
     def in_table(self, url):
         return url in self.urls
 
-
     def updateArticle(self, article, url=None, datetime=None, title=None, news_co=None, text=None, vader_positive=None,
                       vader_negative=None, vader_neutral=None, vader_compound=None, textblob_polarity=None,
-                      textblob_subjectivity=None, textblob_classification=None, textblob_p_pos=None, textblob_p_neg=None):
+                      textblob_subjectivity=None, textblob_classification=None, textblob_p_pos=None,
+                      textblob_p_neg=None, lstm_category=None, lstm_p_pos=None, lstm_p_neu=None, lstm_p_neg=None):
         if url is not None:
             article.url = url
             self.urls.add(url)
@@ -123,30 +127,42 @@ class DataBase:
         if textblob_classification is not None: article.textblob_classification = textblob_classification
         if textblob_p_pos is not None: article.textblob_p_pos = textblob_p_pos
         if textblob_p_neg is not None: article.textblob_p_neg = textblob_p_neg
+        if lstm_category is not None: article.lstm_category = lstm_category
+        if lstm_p_pos is not None: article.lstm_p_pos = lstm_p_pos
+        if lstm_p_neu is not None: article.lstm_p_neu = lstm_p_neu
+        if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
 
-
-    #todo: only talk to database once. have array of articles to upload all at once
+    # todo: only talk to database once. have array of articles to upload all at once
     # rather than one at a time
     def analyze_table(self):
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()
+        lstm = LSTMAnalyzer2()
         results = self.session.query(Article). \
-            filter(or_(Article.vader_compound == None, Article.textblob_polarity == None)). \
+            filter(or_(Article.vader_compound == None, \
+                       Article.textblob_polarity == None, \
+                       Article.lstm_category == None)). \
             all()
         for row in results:
             title = row.title
             vader_dict = va.evaluate([title], all_scores=True)[0]
             tb_dict = tb.evaluate([title], all_scores=True)[0]
             tb_nb_dict = tb.evaluate([title], all_scores=True, naive=True)[0]
+            lstm_dict = lstm.evaluate(title)
             self.updateArticle(row, vader_compound=vader_dict['compound'],
-                          vader_positive=vader_dict['pos'],
-                          vader_negative=vader_dict['neg'],
-                          vader_neutral=vader_dict['neu'],
-                          textblob_polarity=tb_dict['polarity'],
-                          textblob_subjectivity=tb_dict['subjectivity'],
-                          textblob_classification=tb_nb_dict['classification'],
-                          textblob_p_neg=tb_nb_dict['p_neg'],
-                          textblob_p_pos=tb_nb_dict['p_pos'])
+                               vader_positive=vader_dict['pos'],
+                               vader_negative=vader_dict['neg'],
+                               vader_neutral=vader_dict['neu'],
+                               textblob_polarity=tb_dict['polarity'],
+                               textblob_subjectivity=tb_dict['subjectivity'],
+                               textblob_classification=tb_nb_dict['classification'],
+                               textblob_p_neg=tb_nb_dict['p_neg'],
+                               textblob_p_pos=tb_nb_dict['p_pos'],
+                               lstm_category=lstm_dict['category'],
+                               lstm_p_neu=lstm_dict['p_neu'],
+                               lstm_p_pos=lstm_dict['p_pos'],
+                               lstm_p_neg=lstm_dict['p_neg'],
+                               )
             self.session.commit()
 
         return results
@@ -154,8 +170,8 @@ class DataBase:
     def close_session(self):
         self.session.close()
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     db = DataBase()
     db.analyze_table()
     db.close_session()
