@@ -6,7 +6,11 @@ class TextBlobAnalyzer:
     """
 
     """
-    nb = NaiveBayesAnalyzer()
+
+    def __init__(self):
+        self.analyzer = NaiveBayesAnalyzer()
+
+
     def evaluate(self, texts, all_scores=False, naive=False):
         """
         Return list of sentiments in same order as texts
@@ -17,14 +21,16 @@ class TextBlobAnalyzer:
         if naive:
             return self.nb_evaluate(texts, all_scores=all_scores)
 
-        sentiments = [TextBlob(text).sentiment for text in texts]
+        sentiment = TextBlob(text).sentiment
         if all_scores:
-            return [dict(polarity=senti.polarity, subjectivity=senti.subjectivity) for senti in sentiments]
-        return [dict(polarity=sentiment.polarity) for sentiment in sentiments]
+            return dict(polarity=sentiment.polarity, subjectivity=sentiment.subjectivity)
+        return dict(polarity=sentiment.polarity)
 
-    def nb_evaluate(self, texts, all_scores=False):
+    def nb_evaluate(self, text, all_scores=False):
 
-        sentiments = [TextBlob(text, analyzer=self.nb).sentiment for text in texts]
+        sentiment = TextBlob(text, analyzer=self.nb).sentiment
         if all_scores:
-            return [dict(classification=s.classification, p_pos=s.p_pos, p_neg=s.p_neg) for s in sentiments]
-        return [dict(classification=s.classification) for s in sentiments]
+            return dict(classification=sentiment.classification,
+                        p_pos=sentiment.p_pos,
+                        p_neg=sentiment.p_neg)
+        return dict(classification=sentiment.classification)
