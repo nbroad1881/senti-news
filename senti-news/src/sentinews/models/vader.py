@@ -7,15 +7,15 @@ class VaderAnalyzer:
         pass
 
     @staticmethod
-    def evaluate(texts, all_scores=False):
+    def evaluate(text, all_scores=False):
         """
         Return list of sentiments in same order as texts
         :param texts: list of texts
         :return: list of scores. scores are dict with keys of
         neg, neu, pos, compound
         """
-        analyzer = SentimentIntensityAnalyzer()
-        scores = [analyzer.polarity_scores(text) for text in texts]
+
+        score = self.analyzer.polarity_scores(text)
         if all_scores:
-            return scores
-        return [dict(compound=score.get('compound')) for score in scores]
+            return score
+        return dict(compound=score.get('compound'))
