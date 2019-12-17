@@ -9,6 +9,12 @@ import numpy as np
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from sqlalchemy import create_engine, MetaData, Table, Column, String, DateTime, Text, Float
 
+
+
+"""
+This is the old vader model file. Will likely delete soon.
+"""
+
 CNN_DIR_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
 CNN_INFO_FILENAME = 'CNN_INFO.csv'
 CNN_TITLE_COLUMN = 3
