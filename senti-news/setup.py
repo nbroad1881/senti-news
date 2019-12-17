@@ -23,7 +23,7 @@ install_requirements = [
 
 setuptools.setup(
     name="senti-news",
-    version="0.0.19",
+    version="0.0.20",
     author="Nicholas Broad",
     author_email="nicholas@nmbroad.com",
     description="News title sentiment analysis",
