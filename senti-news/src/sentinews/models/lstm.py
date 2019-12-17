@@ -20,6 +20,8 @@ import numpy
 from keras.models import model_from_json
 from spacy.compat import pickle
 import spacy
+from fastai.text import load_learner
+import numpy as np
 
 
 class SentimentAnalyser(object):
@@ -95,3 +97,20 @@ class LSTMAnalyzer:
     def evaluate(self, texts):
 
         return [doc.sentiment for doc in self.nlp.pipe(texts, batch_size=1000)]
+
+
+class LSTMAnalyzer2:
+
+    def __init__(self, model_name='lstm2.pkl'):
+        self.model = load_learner(os.path.join(os.path.dirname(__file__), 'lstm_models/'), model_name)
+
+    def evaluate(self, text):
+        category, num_tensor, prob_tensor = self.model.predict(text)
+
+        return {
+            'category': str(category),
+            'num': int(num_tensor),
+            'p_pos': float(prob_tensor[2]),
+            'p_neu': float(prob_tensor[1]),
+            'p_neg': float(prob_tensor[0])
+        }
