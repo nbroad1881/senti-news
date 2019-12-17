@@ -36,7 +36,7 @@ negative sentiment = compound score <= -0.05
 """
 
 
-def score_texts(texts):
+def score_texts(text):
     """
     Return list of sentiments in same order as texts
     :param texts: list of texts
@@ -44,8 +44,7 @@ def score_texts(texts):
     neg, neu, pos, compound
     """
     analyzer = SentimentIntensityAnalyzer()
-    scores = [analyzer.polarity_scores(text) for text in texts]
-    return scores
+    return analyzer.polarity_scores(text)
 
 
 def load_texts(filepath, column, all_columns=None):
