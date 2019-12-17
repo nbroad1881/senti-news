@@ -16,9 +16,11 @@ vader_pos = va.evaluate([positive_sentence], all_scores=False)
 vader_neg = va.evaluate([negative_sentence], all_scores=False)
 vader_neu = va.evaluate([neutral_sentence], all_scores=False)
 
-textblob_pos = TextBlobAnalyzer.evaluate([positive_sentence], all_info=True, naive=False)
-textblob_neg = TextBlobAnalyzer.evaluate([negative_sentence], all_info=True, naive=False)
-textblob_neu = TextBlobAnalyzer.evaluate([neutral_sentence], all_info=True, naive=False)
+tb = TextBlobAnalyzer()
+
+textblob_pos = tb.evaluate([positive_sentence], all_scores=True, naive=False)
+textblob_neg = tb.evaluate([negative_sentence], all_scores=True, naive=False)
+textblob_neu = tb.evaluate([neutral_sentence], all_scores=True, naive=False)
 
 lstm = LSTMAnalyzer(model_dir='lstm_models')
 lstm_pos = lstm.evaluate([positive_sentence])
