@@ -4,7 +4,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 class VaderAnalyzer:
 
     def __init__(self):
-        pass
+        self.analyzer = SentimentIntensityAnalyzer()
 
     @staticmethod
     def evaluate(text, all_scores=False):
