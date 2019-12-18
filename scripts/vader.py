@@ -9,6 +9,12 @@ import numpy as np
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from sqlalchemy import create_engine, MetaData, Table, Column, String, DateTime, Text, Float
 
+
+
+"""
+This is the old vader model file. Will likely delete soon.
+"""
+
 CNN_DIR_PATH = pathlib.Path('../saved_texts/CNN/text_info/')
 CNN_INFO_FILENAME = 'CNN_INFO.csv'
 CNN_TITLE_COLUMN = 3
@@ -36,7 +42,7 @@ negative sentiment = compound score <= -0.05
 """
 
 
-def score_texts(texts):
+def score_texts(text):
     """
     Return list of sentiments in same order as texts
     :param texts: list of texts
@@ -44,8 +50,7 @@ def score_texts(texts):
     neg, neu, pos, compound
     """
     analyzer = SentimentIntensityAnalyzer()
-    scores = [analyzer.polarity_scores(text) for text in texts]
-    return scores
+    return analyzer.polarity_scores(text)
 
 
 def load_texts(filepath, column, all_columns=None):

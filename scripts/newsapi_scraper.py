@@ -10,15 +10,20 @@ logging.basicConfig(level=logging.INFO)
 # Init
 newsapi = NewsApiClient(api_key='f725be960d5c4ed9937f84cef2620702')
 
-candidates = ['Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
+candidates = ['Donald Trump', 'Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
 PAGE_SIZE = 100
 NEWSAPI_CSV = pathlib.Path('NEWSAPI.csv')
 NEWSAPI_NEW_CSV = pathlib.Path('NEWSAPI_NEW.csv')
 SOURCE_GROUP_SIZE = 6
 
-all_sources = ['abc-news', 'associated-press', 'bbc-news', 'cbc-news', 'cnbc', 'cnn', 'fox-news', 'msnbc', 'nbc-news',
-               'newsweek', 'politico', 'reuters,the-hill,the-american-conservative', 'the-huffington-post',
-               'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time,usa-today', 'vice-news']
+SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'associated-press', "axios", 'bbc-news',
+           "bloomberg", "breitbart-news", "business-insider", "business-insider-uk", "buzzfeed", 'cbc-news', 'cnbc',
+           'cnn', "entertainment-weekly", "financial-post", "fortune", 'fox-news', "independent", "mashable",
+           "medical-news-today", 'msnbc', 'nbc-news', "national-geographic", "national-review", "new-scientist",
+           "news-com-au", "new-york-magazine", "next-big-future", "nfl-news", "the-globe-and-mail", "the-irish-times",
+           "the-jerusalem-post", "the-lad-bible", "the-times-of-india", "the-verge", "wired", 'newsweek', 'politico',
+           'reuters', 'the-hill', "the-hindu", 'the-american-conservative', 'the-huffington-post', "the-new-york-times"
+           'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time', 'usa-today', 'vice-news']
 
 
 def append_all_info(filepath):
@@ -32,7 +37,7 @@ def append_all_info(filepath):
         writer = csv.writer(csv_file)
         for candidate in candidates:
             first_call = newsapi.get_everything(q=candidate,
-                                                sources=''.join(all_sources),
+                                                sources=''.join(SOURCES),
                                                 language='en',
                                                 sort_by='relevancy',
                                                 page=1,
@@ -48,7 +53,7 @@ def append_all_info(filepath):
                         to_param = from_param + datetime.timedelta(days=1)
                         # todo: handle rateLimited error
                         all_articles = newsapi.get_everything(q=candidate,
-                                                              sources=','.join(sources),
+                                                              sources=','.join(SOURCES),
                                                               language='en',
                                                               from_param=from_param.isoformat(),
                                                               to=to_param.isoformat(),

@@ -1,23 +1,32 @@
-import csv
 import logging
 import json
-import pathlib
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
 
+from dotenv import load_dotenv
 import scrapy
 import requests
-from database import add_row_to_db, get_session, get_urls, in_table
 from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
+from sentinews.database.database import add_row_to_db, get_session
 
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
+# todo: use urllib for posts
+ENDPOINT = os.environ.get('ENDPOINT')
+PORT = os.environ.get('PORT')
+USER = os.environ.get('USERNAME')
+PW = os.environ.get('PASSWORD')
+DBNAME = os.environ.get('DBNAME')
+DATABASE_URL = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
 
-LOCAL_POSTGRESQL_URL = 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
+
+# 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
 
-# todo: have an interactive query
+# todo: have an interactive QUERY
 #     database for text documents
 
 class ArticleSource(ABC):
@@ -30,9 +39,10 @@ class ArticleSource(ABC):
         '6': 'Pete Buttigieg'
     }
 
-    def __init__(self, session):
-        self.session = session
+    def __init__(self, interactive):
+        self.session = get_session(DATABASE_URL)
         self.articles_logged = 0
+        self.interactive = interactive or False
 
     @abstractmethod
     def ask_for_query(self, *args, **kwargs):
@@ -57,7 +67,6 @@ class ArticleSource(ABC):
         return sum([1 if name in title.lower() else 0 for name in names]) != 1
 
 
-
 class NYT(scrapy.Spider, ArticleSource):
     NEWS_CO = 'New York Times'
 
@@ -73,32 +82,46 @@ class NYT(scrapy.Spider, ArticleSource):
         ArticleSource.__init__(self, **kwargs)
 
     def ask_for_query(self):
-        query = input("Which candidate?\n"
-                      "1. Donald Trump\n"
-                      "2. Joe Biden\n"
-                      "3. Elizabeth Warren\n"
-                      "4. Bernie Sanders\n"
-                      "5. Kamala Harris\n"
-                      "6. Pete Buttigieg\n")
-        if query not in self.CANDIDATE_DICT:
-            return self.ask_for_query()
-        candidate = self.CANDIDATE_DICT[query]
-        begin_date = input('What is the oldest date? (YYYYMMDD): ')
-        end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
-        end_date = end_date if len(end_date > 1) else datetime.utcnow().isoformat()[:10]
-        return candidate, begin_date, end_date
+        if self.interactive:
+            query = input("Which candidate?\n"
+                          "1. Donald Trump\n"
+                          "2. Joe Biden\n"
+                          "3. Elizabeth Warren\n"
+                          "4. Bernie Sanders\n"
+                          "5. Kamala Harris\n"
+                          "6. Pete Buttigieg\n")
+            if query not in self.CANDIDATE_DICT:
+                return self.ask_for_query()
+            candidate = self.CANDIDATE_DICT[query]
+            begin_date = input('What is the oldest date? (YYYYMMDD): ')
+            end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
+            end_date = end_date if len(end_date > 1) else datetime.utcnow().isoformat()[:10]
+            return candidate, begin_date, end_date
+        today = datetime.utcnow().isoformat()[:10]
+        one_day = timedelta(days=1)
+        yesterday = (datetime.utcnow() - one_day).isoformat()[:10]
+        return list(self.CANDIDATE_DICT.values()), yesterday, today
 
     def start_requests(self):
         query, begin_date, end_date = self.ask_for_query()
         all_urls = []
         all_info = []
-        for p in range(10):
-            api_url = self.form_query(query=query, page=p, begin_date=begin_date, end_date=end_date)
-            urls, info = self.make_api_call(api_url)
+        if self.interactive:
+            for p in range(5):
+                api_url = self.form_query(query=query, page=p, begin_date=begin_date, end_date=end_date)
+                urls, info = self.make_api_call(api_url)
 
-            if urls is not None:
-                all_urls.extend(urls)
-                all_info.extend(info)
+                if urls is not None:
+                    all_urls.extend(urls)
+                    all_info.extend(info)
+        else:
+            for q in query:
+                api_url = self.form_query(query=q, page=0, begin_date=begin_date, end_date=end_date)
+                urls, info = self.make_api_call(api_url)
+
+                if urls is not None:
+                    all_urls.extend(urls)
+                    all_info.extend(info)
 
         for url, info in zip(all_urls, all_info):
             yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(info=info))
@@ -107,7 +130,7 @@ class NYT(scrapy.Spider, ArticleSource):
     def parse(self, response, info):
         # todo: check for bad responses
 
-        soup = BeautifulSoup(response.text)
+        soup = BeautifulSoup(response.text, 'html.parser')
         texts = []
         for paragraphs in soup.select('section.meteredContent p'):
             texts.append(paragraphs.text)
@@ -154,7 +177,7 @@ class NYT(scrapy.Spider, ArticleSource):
 
 class CNN(scrapy.Spider, ArticleSource):
     RESULTS_SIZE = 100
-
+    NUM_PAGES = 5
     NEWS_CO = 'CNN'
     name = 'CNN'
 
@@ -162,32 +185,43 @@ class CNN(scrapy.Spider, ArticleSource):
         ArticleSource.__init__(self, **kwargs)
 
     def ask_for_query(self):
-        query = input("Which candidate?\n"
-                      "1. Donald Trump\n"
-                      "2. Joe Biden\n"
-                      "3. Elizabeth Warren\n"
-                      "4. Bernie Sanders\n"
-                      "5. Kamala Harris\n"
-                      "6. Pete Buttigieg\n")
-        if query not in self.CANDIDATE_DICT:
-            return self.ask_for_query()
-        candidate = self.CANDIDATE_DICT[query].replace(' ', '%20')
-        begin_date = input('What is the oldest date? (YYYYMMDD): ') + "T00:00:00Z"
-        end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
-        if len(end_date) > 1:
-            end_date = end_date + "T23:59:59Z"
+        if self.interactive:
+            query = input("Which candidate?\n"
+                          "1. Donald Trump\n"
+                          "2. Joe Biden\n"
+                          "3. Elizabeth Warren\n"
+                          "4. Bernie Sanders\n"
+                          "5. Kamala Harris\n"
+                          "6. Pete Buttigieg\n")
+            if query not in self.CANDIDATE_DICT:
+                return self.ask_for_query()
+            candidate = self.CANDIDATE_DICT[query].replace(' ', '%20')
+            begin_date = input('What is the oldest date? (YYYYMMDD): ') + "T00:00:00Z"
+            end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
+            if len(end_date) > 1:
+                end_date = end_date + "T23:59:59Z"
+            else:
+                end_date = datetime.utcnow().isoformat(timespec='seconds') + 'Z'
+            return candidate, begin_date, end_date
         else:
-            end_date = datetime.utcnow().isoformat(timespec='seconds')+'Z'
-        return candidate, begin_date, end_date
+            today = datetime.utcnow().isoformat() + 'Z'
+            one_day = timedelta(days=1)
+            yesterday = (datetime.utcnow() - one_day).isoformat() + 'Z'
+            return list(self.CANDIDATE_DICT.values()), yesterday, today
 
     def start_requests(self):
         query, begin_date, end_date = self.ask_for_query()
-        api_url = self.form_query(query, page=1)
-        num_results = self.make_api_call(api_url)
-
-        for p in range(1, num_results // self.RESULTS_SIZE):
-            url = self.form_query(query, page=p)
-            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(begin_date=begin_date, end_date=end_date))
+        if self.interactive:
+            for p in range(self.NUM_PAGES):
+                url = self.form_query(query, page=p)
+                yield scrapy.Request(url=url, callback=self.parse,
+                                     cb_kwargs=dict(begin_date=begin_date, end_date=end_date))
+        else:
+            for q in query:
+                for p in range(self.NUM_PAGES):
+                    url = self.form_query(q, page=p)
+                    yield scrapy.Request(url=url, callback=self.parse,
+                                         cb_kwargs=dict(begin_date=begin_date, end_date=end_date))
 
     def parse(self, response, begin_date, end_date):
 
@@ -230,7 +264,7 @@ class CNN(scrapy.Spider, ArticleSource):
 
     def form_query(self, query, page):
         return f'https://search.api.cnn.io/content?size={self.RESULTS_SIZE}' \
-               f'&q={query}&type=article&sort=relevance&page={page}&from={str(page * self.RESULTS_SIZE)}'
+               f'&q={query}&type=article&sort=newest&page={page}&from={str(page * self.RESULTS_SIZE)}'
 
 
 class FOX(scrapy.Spider, ArticleSource):
@@ -261,27 +295,34 @@ class FOX(scrapy.Spider, ArticleSource):
             end_date = '-'.join([end_date[:4], end_date[4:6], end_date[6:8]])
         else:
             end_date = datetime.utcnow().isoformat()[:10]
-        return candidate, begin_date, end_date
+        return [candidate], begin_date, end_date
 
     def start_requests(self):
-        query, min_date, max_date = self.ask_for_query()
+        if self.interactive:
+            queries, min_date, max_date = self.ask_for_query()
+        else:
+            today = datetime.utcnow().isoformat()[:10]
+            one_day = timedelta(days=1)
+            yesterday = (datetime.utcnow() - one_day).isoformat()[:10]
+            queries, min_date, max_date = list(self.CANDIDATE_DICT.values()), yesterday, today
 
         all_urls, all_info = [], []
-        for start in range(0,
-                           self.PAGE_SIZE * self.NUM_PAGES,
-                           self.PAGE_SIZE):
-            api_url = self.form_query(query, min_date=min_date, max_date=max_date, start=start)
-            urls, info = self.make_api_call(api_url)
+        for query in queries:
+            for start in range(0,
+                               self.PAGE_SIZE * self.NUM_PAGES,
+                               self.PAGE_SIZE):
+                api_url = self.form_query(query, min_date=min_date, max_date=max_date, start=start)
+                urls, info = self.make_api_call(api_url)
 
-            all_urls.extend(urls)
-            all_info.extend(info)
+                all_urls.extend(urls)
+                all_info.extend(info)
 
         for url, info in zip(all_urls, all_info):
             yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(info=info))
 
     def parse(self, response, info):
 
-        soup = BeautifulSoup(response.text)
+        soup = BeautifulSoup(response.text, 'html.parser')
         paragraphs = soup.select('div.article-body p')
         texts = []
         for p in paragraphs:
@@ -336,6 +377,14 @@ def start_process(spider, **kwargs):
     process.start()
 
 
+def get_recent_articles():
+    process = CrawlerProcess()
+    process.crawl(NYT, interactive=False)
+    process.crawl(CNN, interactive=False)
+    process.crawl(FOX, interactive=False)
+    process.start()
+
+
 if __name__ == "__main__":
 
     choice = input("Which news company would you like to scrape?\n"
@@ -343,13 +392,13 @@ if __name__ == "__main__":
                    "2. Fox News\n"
                    "3. NYTimes\n"
                    "4. (in future) Debug Mode\n")
-    session = get_session(LOCAL_POSTGRESQL_URL)
+    session = get_session(os.environ.get('DATABASE_URL'))
     if int(choice) == 1:
-        start_process(CNN, session=session)
+        start_process(CNN, interactive=True)
     elif int(choice) == 2:
-        start_process(FOX, session=session)
+        start_process(FOX, interactive=True)
     elif int(choice) == 3:
-        start_process(NYT, session=session)
+        start_process(NYT, interactive=True)
     else:
         pass
     session.close()

@@ -75,3 +75,4 @@ wasabi==0.2.2
 Werkzeug==0.16.0
 wrapt==1.11.2
 zope.interface==4.6.0
+https://github.com/explosion/spacy-models/releases/download/en_vectors_web_lg-2.0.0/en_vectors_web_lg-2.0.0.tar.gz
