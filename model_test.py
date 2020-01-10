@@ -12,20 +12,20 @@ negative_sentence = "This was a monumental waste of my time!"
 neutral_sentence = "I am walking down the street."
 va = VaderAnalyzer()
 
-vader_pos = va.evaluate([positive_sentence], all_scores=False)
-vader_neg = va.evaluate([negative_sentence], all_scores=False)
-vader_neu = va.evaluate([neutral_sentence], all_scores=False)
+vader_pos = va.evaluate(positive_sentence, all_scores=True)
+vader_neg = va.evaluate(negative_sentence, all_scores=True)
+vader_neu = va.evaluate(neutral_sentence, all_scores=True)
 
 tb = TextBlobAnalyzer()
 
-textblob_pos = tb.evaluate([positive_sentence], all_scores=True, naive=False)
-textblob_neg = tb.evaluate([negative_sentence], all_scores=True, naive=False)
-textblob_neu = tb.evaluate([neutral_sentence], all_scores=True, naive=False)
+textblob_pos = tb.evaluate(positive_sentence, all_scores=True, naive=True)
+textblob_neg = tb.evaluate(negative_sentence, all_scores=True, naive=True)
+textblob_neu = tb.evaluate(neutral_sentence, all_scores=True, naive=True)
 
 lstm = LSTMAnalyzer(model_dir='lstm_models')
-lstm_pos = lstm.evaluate([positive_sentence])
-lstm_neg = lstm.evaluate([negative_sentence])
-lstm_neu = lstm.evaluate([neutral_sentence])
+lstm_pos = lstm.evaluate(positive_sentence)
+lstm_neg = lstm.evaluate(negative_sentence)
+lstm_neu = lstm.evaluate(neutral_sentence)
 
 print(f"Sample positive sentence: {positive_sentence}")
 print(f"Sample negative sentence: {negative_sentence}")

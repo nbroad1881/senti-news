@@ -6,7 +6,7 @@ import logging
 import pandas as pd
 from dotenv import load_dotenv
 from newsapi import NewsApiClient
-from sentinews.database.database import DataBase
+from database.database import DataBase
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +29,7 @@ CANDIDATE_DICT = {
     '6': 'Pete Buttigieg'
 }
 
-SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'associated-press', "axios", 'bbc-news',
+ALL_SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'associated-press', "axios", 'bbc-news',
            "bloomberg", "breitbart-news", "business-insider", "business-insider-uk", "buzzfeed", 'cbc-news', 'cnbc',
            'cnn', "entertainment-weekly", "financial-post", "fortune", 'fox-news', "independent", "mashable",
            "medical-news-today", 'msnbc', 'nbc-news', "national-geographic", "national-review", "new-scientist",
@@ -38,29 +38,27 @@ SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'ass
            'reuters', 'the-hill', "the-hindu", 'the-american-conservative', 'the-huffington-post', "the-new-york-times",
            'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time', 'usa-today', 'vice-news']
 
-LIMITED_SOURCES = ['bbc-news', "breitbart-news", 'cnn', 'fox-news',
+SOURCES = ['bbc-news', "breitbart-news", 'cnn', 'fox-news',
                    'politico', 'reuters', 'the-hill', 'the-american-conservative', 'the-huffington-post',
                    "the-new-york-times", 'the-wall-street-journal', 'the-washington-post', ]
+
+THREE_SOURCES =['cnn','fox-news','the-new-york-times']
 
 
 class NewsAPIScraper:
 
-    def __init__(self, limited):
-        if limited:
-            self.sources = LIMITED_SOURCES
+    def __init__(self, three):
+        if three:
+            self.sources = THREE_SOURCES
         else:
             self.sources = SOURCES
         self.db = DataBase()
 
     def get_num_results(self):
         from_param = date.today() - timedelta(days=1)
-        logging.info(f"query {QUERY}")
-        logging.info(f"from {from_param}")
-        logging.info(f"src {','.join(self.sources)}")
-        logging.info(f"qintitle {Q_IN_TITLE}")
-        first_call = news_api.get_everything(q='DONALD TRUMP',
+        first_call = news_api.get_everything(q=QUERY,
                                              language='en',
-                                             sources=','.join(SOURCES),
+                                             sources=','.join(self.sources),
                                              sort_by='relevancy',
                                              from_param=from_param,
                                              page=1,
@@ -78,9 +76,9 @@ class NewsAPIScraper:
         # todo: have a way to determine how many steps to break it into
         df = pd.DataFrame(columns=['url', 'datetime', 'title', 'news_co', 'text'])
 
-        for hours_back in range(48, 1, -2):
+        for hours_back in range(700, 1, -10):
             from_param = datetime.utcnow() - timedelta(hours=hours_back)
-            to_param = from_param + timedelta(hours=2)
+            to_param = from_param + timedelta(hours=10)
             # todo: handle rateLimited error
             results = news_api.get_everything(q=QUERY,
                                               language='en',
@@ -130,6 +128,6 @@ class NewsAPIScraper:
 
 
 if __name__ == '__main__':
-    napi = NewsAPIScraper(limited=True)
+    napi = NewsAPIScraper(three=True)
     napi.get_titles()
     napi.db.close_session()

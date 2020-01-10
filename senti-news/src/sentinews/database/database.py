@@ -7,7 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sentinews.models.vader import VaderAnalyzer
 from sentinews.models.textblob import TextBlobAnalyzer
-from sentinews.models.lstm import LSTMAnalyzer2
+from sentinews.models.lstm import LSTMAnalyzer
 
 load_dotenv()
 
@@ -19,19 +19,12 @@ PW = os.environ.get('PASSWORD')
 DBNAME = os.environ.get('DBNAME')
 _DATABASE_URI = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
 
-NEWS_CO_DICT = {
-    '1': 'CNN',
-    '2': 'Fox News',
-    '3': 'New York Times'
-}
-
-CHOICE_DICT = {
-    '1': 'CNN',
-    '2': 'FOX',
-    '3': 'NYT'
-}
-
 Base = declarative_base()
+
+"""
+This file is in charge of communicating with the database, both in creating tables and storing
+results.
+"""
 
 
 class Article(Base):
@@ -57,25 +50,10 @@ class Article(Base):
     lstm_p_neg = Column(Float)
 
 
-class Score(Base):
-    __tablename__ = 'scores'
-    url = Column(Text, primary_key=True)
-    vader_positive = Column(Float)
-    vader_negative = Column(Float)
-    vader_neutral = Column(Float)
-    vader_compound = Column(Float)
-    textblob_polarity = Column(Float)
-    textblob_subjectivity = Column(Float)
-    textblob_classification = Column(String(10))
-    textblob_p_pos = Column(Float)
-    textblob_p_neg = Column(Float)
-    lstm_score = Column(Float)
-
-
 class DataBase:
 
-    def __init__(self):
-        self.session = self.get_session()
+    def __init__(self, session=None):
+        self.session = session or self.get_session()
         self.urls = set(self.get_urls())
 
     def get_session(self, database_url=None, echo=False):
@@ -88,6 +66,7 @@ class DataBase:
         if url in self.urls:
             logging.info(f"{title} already in db -- skipping")
             return False
+        logging.info(f"{title} added to db")
         article = Article(url=url, datetime=datetime, title=title, news_co=news_co, text=text)
         self.session.add(article)
         self.session.commit()
@@ -132,22 +111,22 @@ class DataBase:
         if lstm_p_neu is not None: article.lstm_p_neu = lstm_p_neu
         if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
 
-    # todo: only talk to database once. have array of articles to upload all at once
-    # rather than one at a time
+
+    # todo: make sure it finds the LSTM .pkl file correctly
     def analyze_table(self):
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()
-        lstm = LSTMAnalyzer2()
+        lstm = LSTMAnalyzer()
         results = self.session.query(Article). \
-            filter(or_(Article.vader_compound == None, \
-                       Article.textblob_polarity == None, \
+            filter(or_(Article.vader_compound == None,
+                       Article.textblob_polarity == None,
                        Article.lstm_category == None)). \
             all()
         for row in results:
             title = row.title
-            vader_dict = va.evaluate([title], all_scores=True)[0]
-            tb_dict = tb.evaluate([title], all_scores=True)[0]
-            tb_nb_dict = tb.evaluate([title], all_scores=True, naive=True)[0]
+            vader_dict = va.evaluate(title, all_scores=True)
+            tb_dict = tb.evaluate(title, all_scores=True, naive=False)
+            tb_nb_dict = tb.evaluate(title, all_scores=True, naive=True)
             lstm_dict = lstm.evaluate(title)
             self.updateArticle(row, vader_compound=vader_dict['compound'],
                                vader_positive=vader_dict['pos'],

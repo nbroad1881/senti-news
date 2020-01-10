@@ -28,7 +28,7 @@ import thinc.extra.datasets
 from spacy.compat import pickle
 import spacy
 
-TEXTS_DIR = '/Users/nicholasbroad/PycharmProjects/candidate-predictions/saved_texts/FOX/texts'
+TEXTS_DIR = '/Users/nicholasbroad/PycharmProjects/senti-news/saved_texts/FOX/texts'
 SENTIMENT_SCORE_CSV = 'LSTM_FOX_TITLE_SCORES.CSV'
 
 CNN_DIR_PATH = pathlib.Path('../saved_texts/CNN/text_info/')

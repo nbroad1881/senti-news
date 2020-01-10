@@ -6,11 +6,11 @@ class VaderAnalyzer:
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
 
-    @staticmethod
-    def evaluate(text, all_scores=False):
+
+    def evaluate(self, text, all_scores=True):
         """
         Return list of sentiments in same order as texts
-        :param texts: list of texts
+        :param text: sentence to be analyzed
         :return: list of scores. scores are dict with keys of
         neg, neu, pos, compound
         """
