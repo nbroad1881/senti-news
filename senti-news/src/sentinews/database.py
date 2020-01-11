@@ -53,10 +53,14 @@ class Article(Base):
 
 class DataBase:
 
-    def __init__(self, session=None):
-        self.session = session or self.get_session()
+    def __init__(self, database_url=None):
+        if database_url is None:
+            self.session = self.get_session()
+        else:
+            self.session = self.get_session(database_url=database_url)
         self.urls = set(self.get_urls())
 
+    # todo: have an option to pull from env or set own database endpoint
     def get_session(self, database_url=None, echo=False):
         if database_url is None:
             database_url = _DATABASE_URI
@@ -109,7 +113,7 @@ class DataBase:
         if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
 
 
-    # todo: make sure it finds the LSTM .pkl file correctly
+     # todo: make sure it finds the LSTM .pkl file correctly
     def analyze_table(self):
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()
