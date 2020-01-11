@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 from sqlalchemy import Column, String, DateTime, Text, Float, create_engine, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sentinews.models.vader import VaderAnalyzer
-from sentinews.models.textblob import TextBlobAnalyzer
-from sentinews.models.lstm import LSTMAnalyzer
+from sentinews.models import VaderAnalyzer
+from sentinews.models import TextBlobAnalyzer
+from sentinews.models import LSTMAnalyzer
 
 load_dotenv()
 
@@ -73,10 +73,6 @@ class DataBase:
         self.urls.add(url)
 
     def _create_article_table(self):
-        engine = create_engine(_DATABASE_URI)
-        Base.metadata.create_all(engine)
-
-    def _create_scores_table(self):
         engine = create_engine(_DATABASE_URI)
         Base.metadata.create_all(engine)
 
@@ -148,6 +144,10 @@ class DataBase:
 
     def close_session(self):
         self.session.close()
+
+    def fill_null(self):
+        self.analyze_table()
+        self.close_session()
 
 
 if __name__ == '__main__':
