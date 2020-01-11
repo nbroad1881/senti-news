@@ -12,12 +12,13 @@ from sentinews.models import LSTMAnalyzer
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
-ENDPOINT = os.environ.get('ENDPOINT')
-PORT = os.environ.get('PORT')
-USER = os.environ.get('USERNAME')
-PW = os.environ.get('PASSWORD')
-DBNAME = os.environ.get('DBNAME')
-_DATABASE_URI = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
+
+DB_ENDPOINT = os.environ.get('DB_ENDPOINT')
+DB_PORT = os.environ.get('DB_PORT')
+DB_USER = os.environ.get('DB_USERNAME')
+PW = os.environ.get('DB_PASSWORD')
+DB_NAME = os.environ.get('DB_NAME')
+_DATABASE_URI = f"postgres://{DB_USER}:{PW}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
 
 Base = declarative_base()
 
@@ -140,6 +141,7 @@ class DataBase:
                                )
             self.session.commit()
 
+        print("Table is up-to-date")
         return results
 
     def close_session(self):

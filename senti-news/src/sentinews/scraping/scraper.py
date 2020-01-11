@@ -10,21 +10,22 @@ import scrapy
 import requests
 from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
-from sentinews.database.database import add_row_to_db, get_session
+from sentinews.database import DataBase
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 # todo: use urllib for posts
-ENDPOINT = os.environ.get('ENDPOINT')
-PORT = os.environ.get('PORT')
-USER = os.environ.get('USERNAME')
-PW = os.environ.get('PASSWORD')
-DBNAME = os.environ.get('DBNAME')
-DATABASE_URL = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
+DB_ENDPOINT = os.environ.get('DB_ENDPOINT')
+DB_PORT = os.environ.get('DB_PORT')
+DB_USER = os.environ.get('DB_USERNAME')
+PW = os.environ.get('DB_PASSWORD')
+DB_NAME = os.environ.get('DB_NAME')
+LOCAL_DB_URL = f"postgres://{DB_USER}:{PW}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
 
 
 # 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
+db = DataBase()
 
 # todo: have an interactive QUERY
 #     database for text documents
@@ -40,7 +41,7 @@ class ArticleSource(ABC):
     }
 
     def __init__(self, interactive):
-        self.session = get_session(DATABASE_URL)
+        self.session = db.get_session(LOCAL_DB_URL)
         self.articles_logged = 0
         self.interactive = interactive or False
 
@@ -57,7 +58,7 @@ class ArticleSource(ABC):
         pass
 
     def store_info(self, url, date, title, news_co, text):
-        logged = add_row_to_db(self.session, url, date, title, news_co, text)
+        logged = db.add_row_to_db(self.session, url, date, title, news_co, text)
         if logged:
             self.articles_logged += 1
             logging.info(f"Stored #{self.articles_logged} in db: {url}, {date}, {title}")
@@ -392,7 +393,7 @@ if __name__ == "__main__":
                    "2. Fox News\n"
                    "3. NYTimes\n"
                    "4. (in future) Debug Mode\n")
-    session = get_session(os.environ.get('DATABASE_URL'))
+    session = db.get_session(os.environ.get('LOCAL_DB_URL'))
     if int(choice) == 1:
         start_process(CNN, interactive=True)
     elif int(choice) == 2:
