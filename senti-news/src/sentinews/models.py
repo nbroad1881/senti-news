@@ -27,9 +27,17 @@ class LSTMAnalyzer:
 
     """
 
-    # todo: figure out how to handle file better
-    def __init__(self, model_dir='src/sentinews/models/lstm_pkls', model_name='lstm2.pkl'):
-        self.model_dir = pathlib.Path('/Users/nicholasbroad/PycharmProjects/senti-news/senti-news/src/sentinews/lstm_pkls')
+    def __init__(self, model_dir=None, model_name='lstm2.pkl'):
+        """
+
+        :param model_dir:
+        :param model_name:
+        """
+        if model_dir is None:
+            p = pathlib.Path(__file__)
+            self.model_dir = p.parent / 'lstm_pkls'
+        else:
+            self.model_dir = pathlib.Path(model_dir)
         self.model = load_learner(self.model_dir, model_name)
 
     def evaluate(self, text):
