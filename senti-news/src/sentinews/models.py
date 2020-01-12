@@ -1,25 +1,31 @@
 import pathlib
 
-from fastai.text import load_learner
 from textblob import TextBlob
 from textblob.sentiments import NaiveBayesAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-
-"""
-Combining all models into a single file because they aren't that complicated.
-"""
-
+from fastai.text import load_learner
 
 
 """
-The model is trained using the ULMFit technique of transfer learning for NLP purposes.
+models.py
+---
+Holds 3 sentiment classifiers: TextBlob, Vader, and LSTM.
+TextBlob is pretrained on nltk IMDB data using a NaiveBayes approach.
+Vader is pretrained on tweets from Twitter.
+LSTM is trained using the ULMFit technique of transfer learning for NLP purposes.
 The starting model is already a language model trained on wikipedia.
 The language model then gets trained with 1000 articles.
 Then the model becomes a classifier and gets trained on  few hundred hand-labeled news titles.
 The saved model is then stored locally.
+
+Each model has its own class and a method to evaluate a string's sentiment.
 """
 
+
 class LSTMAnalyzer:
+    """
+
+    """
 
     # todo: figure out how to handle file better
     def __init__(self, model_dir='src/sentinews/models/lstm_pkls', model_name='lstm2.pkl'):
@@ -27,6 +33,11 @@ class LSTMAnalyzer:
         self.model = load_learner(self.model_dir, model_name)
 
     def evaluate(self, text):
+        """
+
+        :param text:
+        :return:
+        """
         category, num_tensor, prob_tensor = self.model.predict(text)
 
         return {
@@ -46,13 +57,13 @@ class TextBlobAnalyzer:
     def __init__(self):
         self.nb = NaiveBayesAnalyzer()
 
-
     def evaluate(self, text, all_scores=True, naive=True):
         """
-        Return list of sentiments in same order as texts
-        :param naive: Set to true to use the NaiveBayesAnalyzer, an NLTK classifier trained on movie reviews
-        :param text: string sentence to be analyzed
-        :return: list of sentiment scores. Each score is a named tuple for polarity and subjectivity
+
+        :param text:
+        :param all_scores:
+        :param naive:
+        :return:
         """
         if naive:
             return self.nb_evaluate(text, all_scores=all_scores)
@@ -63,6 +74,12 @@ class TextBlobAnalyzer:
         return dict(polarity=sentiment.polarity)
 
     def nb_evaluate(self, text, all_scores=False):
+        """
+
+        :param text:
+        :param all_scores:
+        :return:
+        """
 
         sentiment = TextBlob(text, analyzer=self.nb).sentiment
         if all_scores:
@@ -73,19 +90,20 @@ class TextBlobAnalyzer:
 
 
 class VaderAnalyzer:
+    """
+
+    """
 
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
 
-
     def evaluate(self, text, all_scores=True):
         """
-        Return list of sentiments in same order as texts
-        :param text: sentence to be analyzed
-        :return: list of scores. scores are dict with keys of
-        neg, neu, pos, compound
-        """
 
+        :param text:
+        :param all_scores:
+        :return:
+        """
         score = self.analyzer.polarity_scores(text)
         if all_scores:
             return score
