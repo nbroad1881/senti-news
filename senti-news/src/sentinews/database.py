@@ -112,8 +112,13 @@ class DataBase:
         if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
 
 
-     # todo: make sure it finds the LSTM .pkl file correctly
     def analyze_table(self):
+        """
+        Looks at self.session's table and checks for null sentiment scores.
+        If there are null values, it will use every model to evaluate each row.
+        :return: Results that were changed
+        :rtype: list of sentinews.database.Article objects
+        """
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()
         lstm = LSTMAnalyzer()
@@ -122,6 +127,7 @@ class DataBase:
                        Article.textblob_polarity == None,
                        Article.lstm_category == None)). \
             all()
+        logging.info(f"{len(results)} rows to update.")
         for row in results:
             title = row.title
             vader_dict = va.evaluate(title, all_scores=True)
@@ -144,7 +150,7 @@ class DataBase:
                                )
             self.session.commit()
 
-        print("Table is up-to-date")
+        logging.info("Table is up-to-date")
         return results
 
     def close_session(self):
