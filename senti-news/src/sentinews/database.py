@@ -16,9 +16,9 @@ logging.basicConfig(level=logging.INFO)
 DB_ENDPOINT = os.environ.get('DB_ENDPOINT')
 DB_PORT = os.environ.get('DB_PORT')
 DB_USER = os.environ.get('DB_USERNAME')
-PW = os.environ.get('DB_PASSWORD')
+DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_NAME = os.environ.get('DB_NAME')
-_DATABASE_URI = f"postgres://{DB_USER}:{PW}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
+DB_URL = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
 
 Base = declarative_base()
 
@@ -55,7 +55,7 @@ class DataBase:
 
     def __init__(self, database_url=None):
 
-        self.database_url = database_url or _DATABASE_URI
+        self.database_url = database_url or DB_URL
         self.session = self.get_session(database_url=self.database_url)
         self.urls = set(self.get_urls())
 

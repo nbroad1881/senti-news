@@ -18,12 +18,10 @@ logging.basicConfig(level=logging.INFO)
 DB_ENDPOINT = os.environ.get('DB_ENDPOINT')
 DB_PORT = os.environ.get('DB_PORT')
 DB_USER = os.environ.get('DB_USERNAME')
-PW = os.environ.get('DB_PASSWORD')
+DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_NAME = os.environ.get('DB_NAME')
-LOCAL_DB_URL = f"postgres://{DB_USER}:{PW}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
+DB_URL = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
 
-
-# 'postgresql://nicholasbroad:@localhost:5432/nicholasbroad'
 
 db = DataBase()
 
@@ -41,7 +39,7 @@ class ArticleSource(ABC):
     }
 
     def __init__(self, interactive):
-        self.session = db.get_session(LOCAL_DB_URL)
+        self.session = db.get_session(DB_URL)
         self.articles_logged = 0
         self.interactive = interactive or False
 
