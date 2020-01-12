@@ -54,16 +54,17 @@ class Article(Base):
 class DataBase:
 
     def __init__(self, database_url=None):
-        if database_url is None:
-            self.session = self.get_session()
-        else:
-            self.session = self.get_session(database_url=database_url)
+
+        self.database_url = database_url or _DATABASE_URI
+        self.session = self.get_session(database_url=self.database_url)
         self.urls = set(self.get_urls())
 
+    def _create_article_table(self):
+        engine = create_engine(self.database_url)
+        Base.metadata.create_all(engine)
+
     # todo: have an option to pull from env or set own database endpoint
-    def get_session(self, database_url=None, echo=False):
-        if database_url is None:
-            database_url = _DATABASE_URI
+    def get_session(self, database_url=self.database_url, echo=False):
         Session = sessionmaker(bind=create_engine(database_url, echo=echo))
         return Session()
 
@@ -77,9 +78,7 @@ class DataBase:
         self.session.commit()
         self.urls.add(url)
 
-    def _create_article_table(self):
-        engine = create_engine(_DATABASE_URI)
-        Base.metadata.create_all(engine)
+
 
     def get_urls(self):
         return [item[0] for item in self.session.query(Article.url).all()]
