@@ -5,19 +5,20 @@ from dotenv import load_dotenv
 from sqlalchemy import Column, String, DateTime, Text, Float, create_engine, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sentinews.models.vader import VaderAnalyzer
-from sentinews.models.textblob import TextBlobAnalyzer
-from sentinews.models.lstm import LSTMAnalyzer
+from sentinews.models import VaderAnalyzer
+from sentinews.models import TextBlobAnalyzer
+from sentinews.models import LSTMAnalyzer
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
-ENDPOINT = os.environ.get('ENDPOINT')
-PORT = os.environ.get('PORT')
-USER = os.environ.get('USERNAME')
-PW = os.environ.get('PASSWORD')
-DBNAME = os.environ.get('DBNAME')
-_DATABASE_URI = f"postgres://{USER}:{PW}@{ENDPOINT}:{PORT}/{DBNAME}"
+
+DB_ENDPOINT = os.environ.get('DB_ENDPOINT')
+DB_PORT = os.environ.get('DB_PORT')
+DB_USER = os.environ.get('DB_USERNAME')
+DB_PASSWORD = os.environ.get('DB_PASSWORD')
+DB_NAME = os.environ.get('DB_NAME')
+DB_URL = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
 
 Base = declarative_base()
 
@@ -52,13 +53,18 @@ class Article(Base):
 
 class DataBase:
 
-    def __init__(self, session=None):
-        self.session = session or self.get_session()
+    def __init__(self, database_url=None):
+
+        self.database_url = database_url or DB_URL
+        self.session = self.get_session(database_url=self.database_url)
         self.urls = set(self.get_urls())
 
-    def get_session(self, database_url=None, echo=False):
-        if database_url is None:
-            database_url = _DATABASE_URI
+    def _create_article_table(self):
+        engine = create_engine(self.database_url)
+        Base.metadata.create_all(engine)
+
+    # todo: have an option to pull from env or set own database endpoint
+    def get_session(self, database_url=self.database_url, echo=False):
         Session = sessionmaker(bind=create_engine(database_url, echo=echo))
         return Session()
 
@@ -72,13 +78,7 @@ class DataBase:
         self.session.commit()
         self.urls.add(url)
 
-    def _create_article_table(self):
-        engine = create_engine(_DATABASE_URI)
-        Base.metadata.create_all(engine)
 
-    def _create_scores_table(self):
-        engine = create_engine(_DATABASE_URI)
-        Base.metadata.create_all(engine)
 
     def get_urls(self):
         return [item[0] for item in self.session.query(Article.url).all()]
@@ -112,8 +112,13 @@ class DataBase:
         if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
 
 
-    # todo: make sure it finds the LSTM .pkl file correctly
     def analyze_table(self):
+        """
+        Looks at self.session's table and checks for null sentiment scores.
+        If there are null values, it will use every model to evaluate each row.
+        :return: Results that were changed
+        :rtype: list of sentinews.database.Article objects
+        """
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()
         lstm = LSTMAnalyzer()
@@ -122,6 +127,7 @@ class DataBase:
                        Article.textblob_polarity == None,
                        Article.lstm_category == None)). \
             all()
+        logging.info(f"{len(results)} rows to update.")
         for row in results:
             title = row.title
             vader_dict = va.evaluate(title, all_scores=True)
@@ -144,10 +150,15 @@ class DataBase:
                                )
             self.session.commit()
 
+        logging.info("Table is up-to-date")
         return results
 
     def close_session(self):
         self.session.close()
+
+    def fill_null(self):
+        self.analyze_table()
+        self.close_session()
 
 
 if __name__ == '__main__':

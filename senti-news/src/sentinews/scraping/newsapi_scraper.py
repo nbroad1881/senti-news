@@ -6,7 +6,7 @@ import logging
 import pandas as pd
 from dotenv import load_dotenv
 from newsapi import NewsApiClient
-from sentinews.database.database import DataBase
+from sentinews.database import DataBase
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -15,7 +15,7 @@ news_api = NewsApiClient(api_key=os.environ.get('NEWS_API_KEY'))
 
 CANDIDATES = ['Donald Trump', 'Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
 LAST_NAMES = ['TRUMP', 'BIDEN', 'SANDERS', 'WARREN', 'HARRIS', 'BUTTIGIEG']
-QUERY = '(' + ') OR ('.join(CANDIDATES) + ')'
+QUERY = '(' + ') OR ('.join(LAST_NAMES) + ')'
 Q_IN_TITLE = '(' + ') OR ('.join(LAST_NAMES) + ')'
 PAGE_SIZE = 100
 MAX_DAYS_BACK = 30
@@ -29,7 +29,7 @@ CANDIDATE_DICT = {
     '6': 'Pete Buttigieg'
 }
 
-SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'associated-press', "axios", 'bbc-news',
+ALL_SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'associated-press', "axios", 'bbc-news',
            "bloomberg", "breitbart-news", "business-insider", "business-insider-uk", "buzzfeed", 'cbc-news', 'cnbc',
            'cnn', "entertainment-weekly", "financial-post", "fortune", 'fox-news', "independent", "mashable",
            "medical-news-today", 'msnbc', 'nbc-news', "national-geographic", "national-review", "new-scientist",
@@ -38,29 +38,28 @@ SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'ass
            'reuters', 'the-hill', "the-hindu", 'the-american-conservative', 'the-huffington-post', "the-new-york-times",
            'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time', 'usa-today', 'vice-news']
 
-LIMITED_SOURCES = ['bbc-news', "breitbart-news", 'cnn', 'fox-news',
+FEWER_SOURCES = ['bbc-news', "breitbart-news", 'cnn', 'fox-news',
                    'politico', 'reuters', 'the-hill', 'the-american-conservative', 'the-huffington-post',
                    "the-new-york-times", 'the-wall-street-journal', 'the-washington-post', ]
 
+MAIN_THREE_SOURCES = ','.join(['cnn', 'fox-news', 'the-new-york-times'])
 
 class NewsAPIScraper:
 
-    def __init__(self, limited):
+    def __init__(self, limited=False, all_=False):
         if limited:
-            self.sources = LIMITED_SOURCES
+            self.sources = FEWER_SOURCES
+        elif all_:
+            self.sources = ALL_SOURCES
         else:
-            self.sources = SOURCES
+            self.sources = MAIN_THREE_SOURCES
         self.db = DataBase()
 
     def get_num_results(self):
         from_param = date.today() - timedelta(days=1)
-        logging.info(f"query {QUERY}")
-        logging.info(f"from {from_param}")
-        logging.info(f"src {','.join(self.sources)}")
-        logging.info(f"qintitle {Q_IN_TITLE}")
-        first_call = news_api.get_everything(q='DONALD TRUMP',
+        first_call = news_api.get_everything(q=QUERY,
                                              language='en',
-                                             sources=','.join(SOURCES),
+                                             sources=self.sources,
                                              sort_by='relevancy',
                                              from_param=from_param,
                                              page=1,
@@ -71,6 +70,8 @@ class NewsAPIScraper:
             return first_call['totalResults']
         return None
 
+    # todo: have a way to control the number of days to look back as a parameter
+    # todo: have default check last 16 hours, broken into 4 sections just in case
     def get_titles(self):
         num_results = self.get_num_results()
         num_iterations = (num_results // PAGE_SIZE) + 1
@@ -84,7 +85,7 @@ class NewsAPIScraper:
             # todo: handle rateLimited error
             results = news_api.get_everything(q=QUERY,
                                               language='en',
-                                              sources=','.join(self.sources),
+                                              sources=self.sources,
                                               from_param=from_param,
                                               to=to_param,
                                               sort_by='relevancy',

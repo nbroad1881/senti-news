@@ -53,8 +53,3 @@ ehthumbs.db
 Thumbs.db
 
 .idea
-
-fox_articles.csv
-cnn_articles.csv
-/scrapy_news/sample_cnn_response.json
-/scrapy_news/sample_fox_response.rtf
