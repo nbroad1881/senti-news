@@ -196,7 +196,7 @@ class NYT(scrapy.Spider, ArticleSource):
                 start_urls.append(url)
                 info.append({
                     'url': url,
-                    'date': date,
+                    'datetime': date,
                     'title': title,
                 })
 
@@ -274,16 +274,14 @@ class CNN(scrapy.Spider, ArticleSource):
                 continue
 
             url = a['url']
-            date = a['firstPublishDate']
+            date_time = a['firstPublishDate']
             title = a['headline']
             body = a['body']
 
             if self.improper_title(title):
                 continue
 
-            article_datetime = isoparse(date)
-            begin_datetime = isoparse(begin_date)
-            end_datetime = isoparse(end_date)
+            article_datetime = isoparse(date_time)
 
             if article_datetime < begin_datetime or article_datetime > end_datetime:
                 continue
@@ -405,7 +403,7 @@ class FOX(scrapy.Spider, ArticleSource):
             text = json.loads(response.text[21:-1])['response']
             for d in text['docs']:
                 info = {
-                    'date': d['date'],
+                    'datetime': d['date'],
                     'title': d['title'],
                     'url': d['url'][0],
                 }
