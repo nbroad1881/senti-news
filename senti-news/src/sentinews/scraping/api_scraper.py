@@ -15,7 +15,7 @@ from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
 load_dotenv()
-logging.basicConfig(level=logging.debug)
+logging.basicConfig(level=logging.DEBUG)
 
 
 """
@@ -237,7 +237,7 @@ class CNN(scrapy.Spider, ArticleSource):
 
             article_datetime = isoparse(date_time)
 
-            if article_datetime < begin_datetime or article_datetime > end_datetime:
+            if not (self.past_date < article_datetime < self.upto_date):
                 continue
 
             item = NewsItem()
