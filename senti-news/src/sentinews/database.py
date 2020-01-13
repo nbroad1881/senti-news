@@ -64,7 +64,8 @@ class DataBase:
         Base.metadata.create_all(engine)
 
     # todo: have an option to pull from env or set own database endpoint
-    def get_session(self, database_url=self.database_url, echo=False):
+    def get_session(self, database_url=None, echo=False):
+        database_url = database_url or self.database_url
         Session = sessionmaker(bind=create_engine(database_url, echo=echo))
         return Session()
 
