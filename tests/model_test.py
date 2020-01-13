@@ -9,8 +9,7 @@ from sentinews.models import LSTMAnalyzer
 
 load_dotenv()
 
-os.environ['LSTM_PKL_MODEL_DIR'] = str(pathlib.Path(__file__).resolve().parent.parent
-                                       / 'senti-news' / 'src' / 'sentinews' / 'lstm_pkls')
+
 """
 Test if the models work as they should
 """
