@@ -4,6 +4,8 @@ import os
 from datetime import datetime, timedelta
 from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
+import os
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 import scrapy
@@ -33,8 +35,10 @@ Every NewsItem will be sent through the item pipeline (NewsItemPipeline).
 NewsItemPipeline will then send the result to the database
 """
 
-# todo: have an interactive QUERY
-#     database for text documents
+DEFAULT_NUM_DAYS_BACK = 7
+DEFAULT_UPTO_DATE = datetime.utcnow()
+CANDIDATES = ['Donald Trump', 'Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
+
 
 # todo: have an interactive QUERY database for text documents
 class ArticleSource(ABC):
@@ -44,33 +48,70 @@ class ArticleSource(ABC):
         '3': 'Elizabeth Warren',
         '4': 'Bernie Sanders',
         '5': 'Kamala Harris',
-        '6': 'Pete Buttigieg'
+        '6': 'Pete Buttigieg',
+        '7': ''
     }
 
-    def __init__(self, interactive):
-        self.session = db.get_session(DB_URL)
+    def __init__(self, interactive, past_date=None, upto_date=None):
         self.articles_logged = 0
         self.interactive = interactive or False
+        self.upto_date = upto_date or DEFAULT_UPTO_DATE
+        self.past_date = past_date or self.upto_date - timedelta(days=DEFAULT_NUM_DAYS_BACK)
 
-    @abstractmethod
     def ask_for_query(self, *args, **kwargs):
-        pass
+        option = self.ask_for_candidate()
+        while option not in self.CANDIDATE_DICT:
+            print('Not valid selection. Try again.')
+            option = self.ask_for_candidate()
+        input_past_date = self.ask_for_date(past=True)
+        while not self.is_valid_date(input_past_date):
+            print('Not valid date. Try again.')
+        input_upto_date = self.ask_for_date(past=False)
+        while not self.is_valid_date(input_upto_date):
+            print('Not valid date. Try again.')
+            input_upto_date = self.ask_for_date(past=False)
+        self.past_date = input_past_date
+        self.upto_date = input_upto_date
+
+        if option == '7':
+            return [quote(c) for c in CANDIDATES]
+
+        return [quote(self.CANDIDATE_DICT[option])]
+
+    @staticmethod
+    def ask_for_candidate():
+        return input("Which candidate?\n"
+                     "1. Donald Trump\n"
+                     "2. Joe Biden\n"
+                     "3. Elizabeth Warren\n"
+                     "4. Bernie Sanders\n"
+                     "5. Kamala Harris\n"
+                     "6. Pete Buttigieg\n"
+                     "7. All candidates\n")
+
+    @staticmethod
+    def ask_for_date(past=False):
+        time_word = 'past' if past else 'most recent'
+        return input(f'What is the {time_word} date? (YYYYMMDD): ')
+
+    @staticmethod
+    def is_valid_date(date_string):
+        return isinstance(date_string, str) and len(date_string) == 8 and date_string.isdigit()
 
     @abstractmethod
-    def form_query(self, *args, **kwargs):
+    def make_api_query(self, *args, **kwargs):
         pass
 
     @abstractmethod
     def make_api_call(self, *args, **kwargs):
         pass
 
-    def store_info(self, url, date, title, news_co, text):
-        logged = db.add_row_to_db(self.session, url, date, title, news_co, text)
-        if logged:
-            self.articles_logged += 1
-            logging.info(f"Stored #{self.articles_logged} in db: {url}, {date}, {title}")
+    @abstractmethod
+    def make_date_strings(self):
+        pass
 
-    def improper_title(self, title):
+    @staticmethod
+    def improper_title(title):
         names = ['trump', 'biden', 'warren', 'sanders', 'harris', 'buttigieg']
         return sum([1 if name in title.lower() else 0 for name in names]) != 1
 
@@ -115,16 +156,12 @@ class NYT(scrapy.Spider, ArticleSource):
         all_urls = []
         all_info = []
         if self.interactive:
-            for p in range(5):
-                api_url = self.form_query(query=query, page=p, begin_date=begin_date, end_date=end_date)
-                urls, info = self.make_api_call(api_url)
-
-                if urls is not None:
-                    all_urls.extend(urls)
-                    all_info.extend(info)
+            query = self.ask_for_query()
         else:
-            for q in query:
-                api_url = self.form_query(query=q, page=0, begin_date=begin_date, end_date=end_date)
+            query = [quote(c) for c in CANDIDATES]
+        for q in query:
+            for p in range(5):
+                api_url = self.make_api_query(query=q, page=p)
                 urls, info = self.make_api_call(api_url)
 
                 if urls is not None:
