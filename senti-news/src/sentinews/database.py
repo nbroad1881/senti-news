@@ -15,10 +15,10 @@ logging.basicConfig(level=logging.INFO)
 
 DB_ENDPOINT = os.environ.get('DB_ENDPOINT')
 DB_PORT = os.environ.get('DB_PORT')
-DB_USER = os.environ.get('DB_USERNAME')
+DB_USERNAME = os.environ.get('DB_USERNAME')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
 DB_NAME = os.environ.get('DB_NAME')
-DB_URL = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
+DB_URL = f"postgres://{DB_USERNAME}:{DB_PASSWORD}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
 
 Base = declarative_base()
 
@@ -64,7 +64,8 @@ class DataBase:
         Base.metadata.create_all(engine)
 
     # todo: have an option to pull from env or set own database endpoint
-    def get_session(self, database_url=self.database_url, echo=False):
+    def get_session(self, database_url=None, echo=False):
+        database_url = database_url or self.database_url
         Session = sessionmaker(bind=create_engine(database_url, echo=echo))
         return Session()
 
@@ -77,7 +78,7 @@ class DataBase:
         self.session.add(article)
         self.session.commit()
         self.urls.add(url)
-
+        return True
 
 
     def get_urls(self):
@@ -121,7 +122,7 @@ class DataBase:
         """
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()
-        lstm = LSTMAnalyzer()
+        lstm = LSTMAnalyzer(model_dir=os.environ.get('LSTM_PKL_MODEL_DIR'), model_name=os.environ.get('LSTM_PKL_FILENAME'))
         results = self.session.query(Article). \
             filter(or_(Article.vader_compound == None,
                        Article.textblob_polarity == None,
