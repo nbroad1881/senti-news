@@ -27,17 +27,20 @@ class LSTMAnalyzer:
 
     """
 
-    def __init__(self, model_dir=None, model_name='lstm2.pkl'):
+    def __init__(self, model_dir, model_name):
         """
 
         :param model_dir:
         :param model_name:
         """
         if model_dir is None:
-            p = pathlib.Path(__file__)
-            self.model_dir = p.parent / 'lstm_pkls'
+            raise
         else:
             self.model_dir = pathlib.Path(model_dir)
+        if model_name is None:
+            raise
+        else:
+            self.model_name = model_name
         self.model = load_learner(self.model_dir, model_name)
 
     def evaluate(self, text):
