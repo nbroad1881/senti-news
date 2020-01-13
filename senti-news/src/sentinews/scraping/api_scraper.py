@@ -23,11 +23,19 @@ DB_NAME = os.environ.get('DB_NAME')
 DB_URL = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
 
 
-db = DataBase()
+"""
+api_scraper.py contains 1 abstract ArticleSource and 3 subclasses: NYT, CNN, FOX
+Each will use scrapy to search the APIs of NYT, CNN, and FOX for news articles.
+The query will contain presidential candidate names.
+Parse turns each result into a NewsItem.
+Every NewsItem will be sent through the item pipeline (NewsItemPipeline).
+NewsItemPipeline will then send the result to the database
+"""
 
 # todo: have an interactive QUERY
 #     database for text documents
 
+# todo: have an interactive QUERY database for text documents
 class ArticleSource(ABC):
     CANDIDATE_DICT = {
         '1': 'Donald Trump',
