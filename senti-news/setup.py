@@ -5,10 +5,7 @@ with open("README.md", "r") as fh:
 
 install_requirements = [
     'sqlalchemy',
-    'cytoolz',
     'numpy',
-    'keras',
-    'spacy',
     'textblob',
     'vaderSentiment',
     'pandas',
@@ -17,13 +14,12 @@ install_requirements = [
     'requests',
     'bs4',
     'scrapy',
-    'tensorflow',
     'python-dotenv',
 ]
 
 setuptools.setup(
     name="senti-news",
-    version="0.0.20",
+    version="0.0.34",
     author="Nicholas Broad",
     author_email="nicholas@nmbroad.com",
     description="News title sentiment analysis",
