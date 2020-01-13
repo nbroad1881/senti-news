@@ -5,7 +5,6 @@ from textblob.sentiments import NaiveBayesAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from fastai.text import load_learner
 
-
 """
 models.py
 ---
@@ -54,9 +53,9 @@ class LSTMAnalyzer:
         return {
             'category': str(category),
             'num': int(num_tensor),
-            'p_pos': float(prob_tensor[2]),
-            'p_neu': float(prob_tensor[1]),
-            'p_neg': float(prob_tensor[0])
+            'p_pos': round(float(prob_tensor[2]), 3),
+            'p_neu': round(float(prob_tensor[1]), 3),
+            'p_neg': round(float(prob_tensor[0]), 3)
         }
 
 
@@ -81,8 +80,8 @@ class TextBlobAnalyzer:
 
         sentiment = TextBlob(text).sentiment
         if all_scores:
-            return dict(polarity=sentiment.polarity, subjectivity=sentiment.subjectivity)
-        return dict(polarity=sentiment.polarity)
+            return dict(polarity=round(sentiment.polarity, 3), subjectivity=round(sentiment.subjectivity, 3))
+        return dict(polarity=round(sentiment.polarity, 3))
 
     def nb_evaluate(self, text, all_scores=False):
         """
@@ -95,8 +94,8 @@ class TextBlobAnalyzer:
         sentiment = TextBlob(text, analyzer=self.nb).sentiment
         if all_scores:
             return dict(classification=sentiment.classification,
-                        p_pos=sentiment.p_pos,
-                        p_neg=sentiment.p_neg)
+                        p_pos=round(sentiment.p_pos, 3),
+                        p_neg=round(sentiment.p_neg, 3))
         return dict(classification=sentiment.classification)
 
 
