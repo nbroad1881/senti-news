@@ -6,7 +6,7 @@ import logging
 import pandas as pd
 from dotenv import load_dotenv
 from newsapi import NewsApiClient
-from sentinews.database.database import DataBase
+from sentinews.database import DataBase
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
