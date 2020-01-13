@@ -1,6 +1,5 @@
 import logging
 import json
-import os
 from datetime import datetime, timedelta
 from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
@@ -152,7 +151,6 @@ class NYT(scrapy.Spider, ArticleSource):
         return list(self.CANDIDATE_DICT.values()), yesterday, today
 
     def start_requests(self):
-        query, begin_date, end_date = self.ask_for_query()
         all_urls = []
         all_info = []
         if self.interactive:
@@ -213,16 +211,21 @@ class NYT(scrapy.Spider, ArticleSource):
         logging.debug(f'Response status code:{response.status_code}')
         return None, None
 
-    @staticmethod
-    def form_query(query, page, begin_date='20190301', end_date='20191001', sort='newest'):
-        return ''.join([f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}',
-                        f'&facet=true&page={str(page)}&begin_date={begin_date}&end_date={end_date}',
-                        f'&facet_fields=document_type&fq=article',
-                        f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'])
+    # todo: use fq to filter results to have name in title
+    # https://developer.nytimes.com/docs/articlesearch-product/1/overview
+    def make_api_query(self, query, page, sort='newest'):
+        begin_date, end_date = self.make_date_strings()
+        return f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}' \
+               f'&facet=true&page={page}&begin_date={begin_date}&end_date={end_date}' \
+               f'&facet_fields=document_type&fq=article' \
+               f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'
 
     def start_crawl(self, **kwargs):
         process = CrawlerProcess()
         process.crawl(self, **kwargs)
+
+    def make_date_strings(self):
+        return self.past_date.strftime('%Y%m%d'), self.upto_date.strftime('%Y%m%d')
 
 
 class CNN(scrapy.Spider, ArticleSource):
@@ -260,18 +263,15 @@ class CNN(scrapy.Spider, ArticleSource):
             return list(self.CANDIDATE_DICT.values()), yesterday, today
 
     def start_requests(self):
-        query, begin_date, end_date = self.ask_for_query()
+
         if self.interactive:
-            for p in range(self.NUM_PAGES):
-                url = self.form_query(query, page=p)
-                yield scrapy.Request(url=url, callback=self.parse,
-                                     cb_kwargs=dict(begin_date=begin_date, end_date=end_date))
+            query = self.ask_for_query()
         else:
-            for q in query:
-                for p in range(self.NUM_PAGES):
-                    url = self.form_query(q, page=p)
-                    yield scrapy.Request(url=url, callback=self.parse,
-                                         cb_kwargs=dict(begin_date=begin_date, end_date=end_date))
+            query = [quote(c) for c in CANDIDATES]
+        for q in query:
+            for p in range(self.NUM_PAGES):
+                url = self.make_api_query(q, page=p)
+                yield scrapy.Request(url=url, callback=self.parse_request)
 
     def parse_request(self, response):
 
@@ -318,9 +318,13 @@ class CNN(scrapy.Spider, ArticleSource):
         else:
             logging.debug(f'Request denied ({response.status_code})')
 
-    def form_query(self, query, page):
+    def make_api_query(self, query, page):
         return f'https://search.api.cnn.io/content?size={self.RESULTS_SIZE}' \
-               f'&q={query}&type=article&sort=newest&page={page}&from={str(page * self.RESULTS_SIZE)}'
+               f'&q={query}&type=article&sort=newest&page={page}' \
+               f'&from={str(page * self.RESULTS_SIZE)}'
+
+    def make_date_strings(self):
+        return self.past_date.isoformat() + 'Z', self.upto_date.isoformat() + 'Z'
 
 
 class FOX(scrapy.Spider, ArticleSource):
@@ -355,19 +359,16 @@ class FOX(scrapy.Spider, ArticleSource):
 
     def start_requests(self):
         if self.interactive:
-            queries, min_date, max_date = self.ask_for_query()
+            query = self.ask_for_query()
         else:
-            today = datetime.utcnow().isoformat()[:10]
-            one_day = timedelta(days=1)
-            yesterday = (datetime.utcnow() - one_day).isoformat()[:10]
-            queries, min_date, max_date = list(self.CANDIDATE_DICT.values()), yesterday, today
+            query = [quote(c) for c in CANDIDATES]
 
         all_urls, all_info = [], []
-        for query in queries:
+        for q in query:
             for start in range(0,
                                self.PAGE_SIZE * self.NUM_PAGES,
                                self.PAGE_SIZE):
-                api_url = self.form_query(query, min_date=min_date, max_date=max_date, start=start)
+                api_url = self.make_api_query(q, start=start)
                 urls, info = self.make_api_call(api_url)
 
                 all_urls.extend(urls)
@@ -424,13 +425,15 @@ class FOX(scrapy.Spider, ArticleSource):
         else:
             return None
 
-    @staticmethod
-    def form_query(query, min_date, max_date, start):
-        return ''.join([f'https://api.foxnews.com/v1/content/search?q={query}',
-                        f'&fields=date,description,title,url,image,type,taxonomy',
-                        f'&section.path=fnc&type=article&min_date={min_date}',
-                        f'&max_date={max_date}&start={start}&callback=angular.callbacks._0&cb=',
-                        '112'])
+    def make_api_query(self, query, start):
+        min_date, max_date = self.make_date_strings()
+        return f'https://api.foxnews.com/v1/content/search?q={query}' \
+               f'&fields=date,description,title,url,image,type,taxonomy' \
+               f'&section.path=fnc&type=article&min_date={min_date}' \
+               f'&max_date={max_date}&start={start}&callback=angular.callbacks._0&cb=112'
+
+    def make_date_strings(self):
+        return self.past_date.strftime('%Y-%m-%d'), self.upto_date.strftime('%Y-%m-%d')
 
 
 def start_process(spider, **kwargs):
