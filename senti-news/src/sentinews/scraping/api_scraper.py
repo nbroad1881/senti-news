@@ -378,19 +378,16 @@ def get_recent_articles():
 
 
 if __name__ == "__main__":
-
     choice = input("Which news company would you like to scrape?\n"
-                   "1. CNN\n"
-                   "2. Fox News\n"
-                   "3. NYTimes\n"
+                   "1. NYTimes\n"
+                   "2. CNN\n"
+                   "3. Fox News\n"
                    "4. (in future) Debug Mode\n")
-    session = db.get_session(os.environ.get('LOCAL_DB_URL'))
-    if int(choice) == 1:
-        start_process(CNN, interactive=True)
-    elif int(choice) == 2:
-        start_process(FOX, interactive=True)
-    elif int(choice) == 3:
+    if choice == '1':
         start_process(NYT, interactive=True)
+    elif choice == '2':
+        start_process(CNN, interactive=True)
+    elif choice == '3':
+        start_process(FOX, interactive=True)
     else:
         pass
-    session.close()
