@@ -169,10 +169,9 @@ class NYT(scrapy.Spider, ArticleSource):
                     all_info.extend(info)
 
         for url, info in zip(all_urls, all_info):
-            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(info=info))
+            yield scrapy.Request(url=url, callback=self.parse_request, cb_kwargs=dict(info=info))
 
-    # todo: not violate LSP
-    def parse(self, response, info):
+    def parse_request(self, response, info):
         # todo: check for bad responses
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -274,7 +273,7 @@ class CNN(scrapy.Spider, ArticleSource):
                     yield scrapy.Request(url=url, callback=self.parse,
                                          cb_kwargs=dict(begin_date=begin_date, end_date=end_date))
 
-    def parse(self, response, begin_date, end_date):
+    def parse_request(self, response):
 
         articles = json.loads(response.text)['result']
         for a in articles:
@@ -375,9 +374,9 @@ class FOX(scrapy.Spider, ArticleSource):
                 all_info.extend(info)
 
         for url, info in zip(all_urls, all_info):
-            yield scrapy.Request(url=url, callback=self.parse, cb_kwargs=dict(info=info))
+            yield scrapy.Request(url=url, callback=self.parse_request, cb_kwargs=dict(info=info))
 
-    def parse(self, response, info):
+    def parse_request(self, response, info):
 
         soup = BeautifulSoup(response.text, 'html.parser')
         paragraphs = soup.select('div.article-body p')
