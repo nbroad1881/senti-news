@@ -7,10 +7,11 @@ from abc import ABC, abstractmethod
 
 from dotenv import load_dotenv
 import scrapy
+from sentinews.scraping.scraping.items import NewsItem
 import requests
 from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
-from sentinews.database import DataBase
+from scrapy.utils.project import get_project_settings
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -143,7 +144,13 @@ class NYT(scrapy.Spider, ArticleSource):
             texts.append(paragraphs.text)
         body = ' '.join(texts)
 
-        self.store_info(url=info['url'], date=info['date'], title=info['title'], news_co=self.NEWS_CO, text=body)
+        item = NewsItem()
+        item['url'] = info['url']
+        item['datetime'] = info['datetime']
+        item['title'] = info['title']
+        item['news_co'] = self.NEWS_CO
+        item['text'] = body
+        yield item
 
     def make_api_call(self, api_url):
         logging.debug(f'api_url:{api_url}')
@@ -252,7 +259,13 @@ class CNN(scrapy.Spider, ArticleSource):
             if article_datetime < begin_datetime or article_datetime > end_datetime:
                 continue
 
-            self.store_info(url, date, title, self.NEWS_CO, body)
+            item = NewsItem()
+            item['url'] = url
+            item['datetime'] = date_time
+            item['title'] = title
+            item['news_co'] = self.NEWS_CO
+            item['text'] = body
+            yield item
 
     def make_api_call(self, api_url):
         """
@@ -338,7 +351,13 @@ class FOX(scrapy.Spider, ArticleSource):
 
         body = ' '.join(texts)
 
-        self.store_info(url=info['url'], date=info['date'], title=info['title'], news_co=self.NEWS_CO, text=body)
+        item = NewsItem()
+        item['url'] = info['url']
+        item['datetime'] = info['datetime']
+        item['title'] = info['title']
+        item['news_co'] = self.NEWS_CO
+        item['text'] = body
+        yield item
 
     def make_api_call(self, api_url):
         """
@@ -385,7 +404,9 @@ def start_process(spider, **kwargs):
 
 
 def get_recent_articles():
-    process = CrawlerProcess()
+    settings_file_path = 'scraping.settings'  # The path seen from root, ie. from main.py
+    os.environ.setdefault('SCRAPY_SETTINGS_MODULE', settings_file_path)
+    process = CrawlerProcess(get_project_settings())
     process.crawl(NYT, interactive=False)
     process.crawl(CNN, interactive=False)
     process.crawl(FOX, interactive=False)
