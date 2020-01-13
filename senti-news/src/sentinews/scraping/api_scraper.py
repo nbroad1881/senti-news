@@ -117,7 +117,7 @@ class ArticleSource(ABC):
 
 
 class NYT(scrapy.Spider, ArticleSource):
-    NEWS_CO = 'New York Times'
+    NEWS_CO = 'The New York Times'
 
     # todo: handle rate
     custom_settings = {
@@ -328,7 +328,7 @@ class FOX(scrapy.Spider, ArticleSource):
     PAGE_SIZE = 10
     NUM_PAGES = 10
 
-    NEWS_CO = 'FOX News'
+    NEWS_CO = 'Fox News'
     name = 'Fox'
 
     def __init__(self, **kwargs):
