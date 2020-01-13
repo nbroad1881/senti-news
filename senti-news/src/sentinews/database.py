@@ -78,7 +78,7 @@ class DataBase:
         self.session.add(article)
         self.session.commit()
         self.urls.add(url)
-
+        return True
 
 
     def get_urls(self):
