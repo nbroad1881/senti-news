@@ -122,7 +122,7 @@ class DataBase:
         """
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()
-        lstm = LSTMAnalyzer()
+        lstm = LSTMAnalyzer(model_dir=os.environ.get('LSTM_PKL_MODEL_DIR'), model_name=os.environ.get('LSTM_PKL_FILENAME'))
         results = self.session.query(Article). \
             filter(or_(Article.vader_compound == None,
                        Article.textblob_polarity == None,
