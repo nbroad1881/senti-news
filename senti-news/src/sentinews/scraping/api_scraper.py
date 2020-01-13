@@ -122,27 +122,6 @@ class NYT(scrapy.Spider, ArticleSource):
     def __init__(self, **kwargs):
         ArticleSource.__init__(self, **kwargs)
 
-    def ask_for_query(self):
-        if self.interactive:
-            query = input("Which candidate?\n"
-                          "1. Donald Trump\n"
-                          "2. Joe Biden\n"
-                          "3. Elizabeth Warren\n"
-                          "4. Bernie Sanders\n"
-                          "5. Kamala Harris\n"
-                          "6. Pete Buttigieg\n")
-            if query not in self.CANDIDATE_DICT:
-                return self.ask_for_query()
-            candidate = self.CANDIDATE_DICT[query]
-            begin_date = input('What is the oldest date? (YYYYMMDD): ')
-            end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
-            end_date = end_date if len(end_date > 1) else datetime.utcnow().isoformat()[:10]
-            return candidate, begin_date, end_date
-        today = datetime.utcnow().isoformat()[:10]
-        one_day = timedelta(days=1)
-        yesterday = (datetime.utcnow() - one_day).isoformat()[:10]
-        return list(self.CANDIDATE_DICT.values()), yesterday, today
-
     def start_requests(self):
         all_urls = []
         all_info = []
@@ -230,31 +209,6 @@ class CNN(scrapy.Spider, ArticleSource):
     def __init__(self, **kwargs):
         ArticleSource.__init__(self, **kwargs)
 
-    def ask_for_query(self):
-        if self.interactive:
-            query = input("Which candidate?\n"
-                          "1. Donald Trump\n"
-                          "2. Joe Biden\n"
-                          "3. Elizabeth Warren\n"
-                          "4. Bernie Sanders\n"
-                          "5. Kamala Harris\n"
-                          "6. Pete Buttigieg\n")
-            if query not in self.CANDIDATE_DICT:
-                return self.ask_for_query()
-            candidate = self.CANDIDATE_DICT[query].replace(' ', '%20')
-            begin_date = input('What is the oldest date? (YYYYMMDD): ') + "T00:00:00Z"
-            end_date = input('What is the newest date? (YYYYMMDD or nothing for today\'s date): ')
-            if len(end_date) > 1:
-                end_date = end_date + "T23:59:59Z"
-            else:
-                end_date = datetime.utcnow().isoformat(timespec='seconds') + 'Z'
-            return candidate, begin_date, end_date
-        else:
-            today = datetime.utcnow().isoformat() + 'Z'
-            one_day = timedelta(days=1)
-            yesterday = (datetime.utcnow() - one_day).isoformat() + 'Z'
-            return list(self.CANDIDATE_DICT.values()), yesterday, today
-
     def start_requests(self):
 
         if self.interactive:
@@ -327,26 +281,6 @@ class FOX(scrapy.Spider, ArticleSource):
 
     def __init__(self, **kwargs):
         ArticleSource.__init__(self, **kwargs)
-
-    def ask_for_query(self):
-        query = input("Which candidate?\n"
-                      "1. Donald Trump\n"
-                      "2. Joe Biden\n"
-                      "3. Elizabeth Warren\n"
-                      "4. Bernie Sanders\n"
-                      "5. Kamala Harris\n"
-                      "6. Pete Buttigieg\n")
-        if query not in self.CANDIDATE_DICT:
-            return self.ask_for_query()
-        candidate = self.CANDIDATE_DICT[query].replace(' ', '+')
-        begin_date = input('What is the oldest date? (YYYYMMDD): ')
-        begin_date = '-'.join([begin_date[:4], begin_date[4:6], begin_date[6:8]])
-        end_date = input('What is the newest date? (YYYYMMDD or nothing for today): ')
-        if len(end_date) > 1:
-            end_date = '-'.join([end_date[:4], end_date[4:6], end_date[6:8]])
-        else:
-            end_date = datetime.utcnow().isoformat()[:10]
-        return [candidate], begin_date, end_date
 
     def start_requests(self):
         if self.interactive:
