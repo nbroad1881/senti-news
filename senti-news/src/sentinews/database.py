@@ -96,7 +96,6 @@ class DataBase:
         Base.metadata.create_all(self.engine)
         return True
 
-    # todo: have an option to pull from env or set own database endpoint
     def get_session(self, database_url=None, echo=False):
         database_url = database_url or self.database_url
         Session = sessionmaker(bind=create_engine(database_url, echo=echo))
@@ -152,7 +151,7 @@ class DataBase:
         if lstm_p_pos is not None: article.lstm_p_pos = lstm_p_pos
         if lstm_p_neu is not None: article.lstm_p_neu = lstm_p_neu
         if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
-
+        self.session.commit()
 
     def analyze_table(self):
         """
@@ -190,7 +189,7 @@ class DataBase:
                                lstm_p_pos=lstm_dict['p_pos'],
                                lstm_p_neg=lstm_dict['p_neg'],
                                )
-            self.session.commit()
+
 
         logging.info("Table is up-to-date")
         return results
