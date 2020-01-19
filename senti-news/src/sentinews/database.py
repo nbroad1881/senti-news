@@ -102,6 +102,9 @@ class DataBase:
         Session = sessionmaker(bind=create_engine(database_url, echo=echo))
         return Session()
 
+    def find_row(self, url):
+        return self.session.query(Article).filter(Article.url == url).first()
+
     def add_row(self, url, datetime, title, news_co, text=''):
         if url in self.urls:
             logging.info(f"{title} already in db -- skipping")
@@ -113,6 +116,11 @@ class DataBase:
         self.urls.add(url)
         return True
 
+    def delete_row(self, url):
+        result = self.session.query(Article). \
+            filter(Article.url == url).first()
+        self.session.delete(result)
+        self.session.commit()
 
     def get_urls(self):
         return [item[0] for item in self.session.query(Article.url).all()]
