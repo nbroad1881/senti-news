@@ -79,12 +79,22 @@ class DataBase:
     def __init__(self, database_url=None):
 
         self.database_url = database_url or DB_URL
+
+        self.engine = create_engine(self.database_url)
         self.session = self.get_session(database_url=self.database_url)
         self.urls = set(self.get_urls())
 
     def _create_article_table(self):
-        engine = create_engine(self.database_url)
-        Base.metadata.create_all(engine)
+        """
+        If there is not a table already in the database, it creates one and returns True.
+        If the table already exists, it returns False.
+        :return: True if table created, False if table already exists.
+        :rtype: Boolean.
+        """
+        if self.engine.dialect.has_table(self.engine, Article.__tablename__):
+            return False
+        Base.metadata.create_all(self.engine)
+        return True
 
     # todo: have an option to pull from env or set own database endpoint
     def get_session(self, database_url=None, echo=False):
