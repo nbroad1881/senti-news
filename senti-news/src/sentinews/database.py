@@ -50,6 +50,29 @@ class Article(Base):
     lstm_p_pos = Column(Float)
     lstm_p_neg = Column(Float)
 
+    def __repr__(self):
+        return str({
+            'url': self.url,
+            'datetime': self.datetime,
+            'title': self.title,
+            'news_co': self.news_co,
+            'text': self.text,
+            'vader_positive': self.vader_positive,
+            'vader_negative': self.vader_negative,
+            'vader_neutral': self.vader_neutral,
+            'vader_compound': self.vader_compound,
+            'textblob_polarity': self.textblob_polarity,
+            'textblob_subjectivity': self.textblob_subjectivity,
+            'textblob_classification': self.textblob_classification,
+            'textblob_p_pos': self.textblob_p_pos,
+            'textblob_p_neg': self.textblob_p_neg,
+            'lstm_score': self.lstm_score,
+            'lstm_category': self.lstm_category,
+            'lstm_p_neu': self.lstm_p_neu,
+            'lstm_p_pos': self.lstm_p_pos,
+            'lstm_p_neg': self.lstm_p_neg,
+        })
+
 
 class DataBase:
 
