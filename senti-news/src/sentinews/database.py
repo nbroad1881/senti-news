@@ -161,7 +161,7 @@ class DataBase:
         if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
         self.session.commit()
 
-    def analyze_table(self):
+    def calculate_scores(self):
         """
         Looks at self.session's table and checks for null sentiment scores.
         If there are null values, it will use every model to evaluate each row.
