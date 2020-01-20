@@ -94,6 +94,7 @@ class NewsAPIScraper:
                                               qintitle=Q_IN_TITLE)
             df = self.articles_to_df(results.get('articles'), df)
             self.dataframe_to_db(df)
+            self.db.analyze_table()
 
     def dataframe_to_db(self, frame):
         for index, row in frame.iterrows():
