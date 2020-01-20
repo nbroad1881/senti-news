@@ -183,20 +183,20 @@ class DataBase:
             tb_dict = tb.evaluate(title, all_scores=True, naive=False)
             tb_nb_dict = tb.evaluate(title, all_scores=True, naive=True)
             lstm_dict = lstm.evaluate(title)
-            self.updateArticle(row, vader_compound=vader_dict['compound'],
-                               vader_positive=vader_dict['pos'],
-                               vader_negative=vader_dict['neg'],
-                               vader_neutral=vader_dict['neu'],
-                               textblob_polarity=tb_dict['polarity'],
-                               textblob_subjectivity=tb_dict['subjectivity'],
-                               textblob_classification=tb_nb_dict['classification'],
-                               textblob_p_neg=tb_nb_dict['p_neg'],
-                               textblob_p_pos=tb_nb_dict['p_pos'],
-                               lstm_category=lstm_dict['category'],
-                               lstm_p_neu=lstm_dict['p_neu'],
-                               lstm_p_pos=lstm_dict['p_pos'],
-                               lstm_p_neg=lstm_dict['p_neg'],
-                               )
+            self.update_article(row, vader_compound=vader_dict['compound'],
+                                vader_positive=vader_dict['pos'],
+                                vader_negative=vader_dict['neg'],
+                                vader_neutral=vader_dict['neu'],
+                                textblob_polarity=tb_dict['polarity'],
+                                textblob_subjectivity=tb_dict['subjectivity'],
+                                textblob_classification=tb_nb_dict['classification'],
+                                textblob_p_neg=tb_nb_dict['p_neg'],
+                                textblob_p_pos=tb_nb_dict['p_pos'],
+                                lstm_category=lstm_dict['category'],
+                                lstm_p_neu=lstm_dict['p_neu'],
+                                lstm_p_pos=lstm_dict['p_pos'],
+                                lstm_p_neg=lstm_dict['p_neg'],
+                                )
 
 
         logging.info("Table is up-to-date")
@@ -206,11 +206,11 @@ class DataBase:
         self.session.close()
 
     def fill_null(self):
-        self.analyze_table()
+        self.calculate_scores()
         self.close_session()
 
 
 if __name__ == '__main__':
     db = DataBase()
-    db.analyze_table()
+    db.calculate_scores()
     db.close_session()
