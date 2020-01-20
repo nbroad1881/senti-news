@@ -1,3 +1,4 @@
+pytest
 absl-py==0.8.1
 alembic==1.3.0
 asn1crypto==1.2.0
