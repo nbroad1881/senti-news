@@ -124,7 +124,7 @@ def test_update_table_update_article(database):
     assert row.lstm_p_pos is None
     assert row.lstm_p_neu is None
     assert row.lstm_p_neg is None
-    database.update_table()
+    database.calculate_scores()
     row = database.find_row(url)
     assert row.vader_positive is not None
     assert row.vader_negative is not None
