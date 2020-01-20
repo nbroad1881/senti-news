@@ -84,7 +84,7 @@ class DataBase:
         self.session = self.get_session(database_url=self.database_url)
         self.urls = set(self.get_urls())
 
-    def _create_article_table(self):
+    def create_article_table(self):
         """
         If there is not a table already in the database, it creates one and returns True.
         If the table already exists, it returns False.
