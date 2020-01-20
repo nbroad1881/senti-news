@@ -89,7 +89,7 @@ def test_add_find_and_delete_row(url, datetime_, title, news_co, text, database)
     database.delete_row(url)
     database.close_session()
     find = database.find_row(url)
-    assert(find is None)
+    assert find is False
     check = database.get_session().query(Article).filter(Article.url == url).first()
     assert check is None
 
