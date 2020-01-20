@@ -135,10 +135,10 @@ class DataBase:
     def in_table(self, url):
         return url in self.urls
 
-    def updateArticle(self, article, url=None, datetime=None, title=None, news_co=None, text=None, vader_positive=None,
-                      vader_negative=None, vader_neutral=None, vader_compound=None, textblob_polarity=None,
-                      textblob_subjectivity=None, textblob_classification=None, textblob_p_pos=None,
-                      textblob_p_neg=None, lstm_category=None, lstm_p_pos=None, lstm_p_neu=None, lstm_p_neg=None):
+    def update_article(self, article, url=None, datetime=None, title=None, news_co=None, text=None, vader_positive=None,
+                       vader_negative=None, vader_neutral=None, vader_compound=None, textblob_polarity=None,
+                       textblob_subjectivity=None, textblob_classification=None, textblob_p_pos=None,
+                       textblob_p_neg=None, lstm_category=None, lstm_p_pos=None, lstm_p_neu=None, lstm_p_neg=None):
         if url is not None:
             article.url = url
             self.urls.add(url)
