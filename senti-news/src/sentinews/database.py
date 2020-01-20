@@ -102,7 +102,15 @@ class DataBase:
         return Session()
 
     def find_row(self, url):
-        return self.session.query(Article).filter(Article.url == url).first()
+        """
+        True if url in database, False if not.
+        Query comes back None if it can't find the url.
+        :param url:
+        :type url:
+        :return:
+        :rtype:
+        """
+        return self.session.query(Article).filter(Article.url == url).first() or False
 
     def add_row(self, url, datetime, title, news_co, text=''):
         if url in self.urls:
