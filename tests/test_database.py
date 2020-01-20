@@ -102,3 +102,43 @@ def test_get_urls_in_table(database):
     for url in actual_urls:
         assert(url[0] in urls)
 
+def test_update_table_update_article(database):
+    url = 'test.com'
+    database.add_row(url,
+                    datetime.today(),
+                    'title',
+                    'news_co',
+                    'text')
+    assert database.in_table(url)
+    row = database.find_row(url)
+    assert row.vader_positive is None
+    assert row.vader_negative is None
+    assert row.vader_neutral is None
+    assert row.vader_compound is None
+    assert row.textblob_polarity is None
+    assert row.textblob_subjectivity is None
+    assert row.textblob_classification is None
+    assert row.textblob_p_pos is None
+    assert row.textblob_p_neg is None
+    assert row.lstm_category is None
+    assert row.lstm_p_pos is None
+    assert row.lstm_p_neu is None
+    assert row.lstm_p_neg is None
+    database.update_table()
+    row = database.find_row(url)
+    assert row.vader_positive is not None
+    assert row.vader_negative is not None
+    assert row.vader_neutral is not None
+    assert row.vader_compound is not None
+    assert row.textblob_polarity is not None
+    assert row.textblob_subjectivity is not None
+    assert row.textblob_classification is not None
+    assert row.textblob_p_pos is not None
+    assert row.textblob_p_neg is not None
+    assert row.lstm_category is not None
+    assert row.lstm_p_pos is not None
+    assert row.lstm_p_neu is not None
+    assert row.lstm_p_neg is not None
+
+    database.delete_row(url)
+    assert database.find_row(url) is False
