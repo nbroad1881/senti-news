@@ -80,84 +80,126 @@ class TestDataBase:
         assert re.search(r':(\d+)/', str(session.get_bind())).group(1) == os.environ.get('DB_PORT')
         assert re.search(r'\d/(.*)\)$', str(session.get_bind())).group(1) == os.environ.get('DB_NAME')
 
+    # Data to be parametrized
+    test_url = ['random.com', 'example.com', 'universe.com']
+    test_datetime = [datetime(2000, 1, 2), datetime(2000, 1, 3), datetime(2000, 1, 4)]
+    test_title = ['first title', 'second title', 'third title']
+    test_news_co = ['cnn', 'fox', 'new york times']
+    test_text = ['first piece of text', 'second piece of text', 'third piece of text']
 
-test_url = ['random.com', 'example.com', 'universe.com']
-test_datetime = [datetime(2000, 1, 2), datetime(2000, 1, 3), datetime(2000, 1, 4)]
-test_title = ['first title', 'second title', 'third title']
-test_news_co = ['cnn', 'fox', 'new york times']
-test_text = ['first piece of text', 'second piece of text', 'third piece of text']
+    @pytest.mark.parametrize("url, datetime_, title, news_co, text",
+                             list(zip(
+                                 test_url,
+                                 test_datetime,
+                                 test_title,
+                                 test_news_co,
+                                 test_text,
+                             )))
+    def test_add_find_and_delete_row(self, url, datetime_, title, news_co, text, database):
+        """
+        Test for:
+        add_row()
+        find_row()
+        delete_row()
+        """
+        # Start by adding a dummy article
+        database.add_article_info(url, datetime_, title, news_co, text)
+        # Get that article from the database
+        result = database.get_session().query(Article).filter(Article.url == url).first()
 
+        # Assert that the article from the database exists and matches the information just added
+        assert result is not None
+        assert result.datetime == datetime_
+        assert result.title == title
+        assert result.news_co == news_co
+        assert result.text == text
 
-@pytest.mark.parametrize("url, datetime_, title, news_co, text",
-                         list(zip(
-                             test_url,
-                             test_datetime,
-                             test_title,
-                             test_news_co,
-                             test_text,
-                         )))
-def test_add_find_and_delete_row(url, datetime_, title, news_co, text, database):
-    database.add_article_info(url, datetime_, title, news_co, text)
-    result = database.get_session().query(Article).filter(Article.url == url).first()
-    assert result is not None
-    assert result.datetime == datetime_
-    assert result.title == title
-    assert result.news_co == news_co
-    assert result.text == text
-    database.delete_row(url)
-    database.close_session()
-    find = database.find_row(url)
-    assert find is False
-    check = database.get_session().query(Article).filter(Article.url == url).first()
-    assert check is None
+        # Use find_row to get same information and check if it is the same
+        find = database.find_row(url)
+        assert result.datetime == find.datetime
+        assert result.title == find.title
+        assert result.news_co == find.news_co
+        assert result.text == find.text
 
+        # Delete the row from the database
+        database.delete_row(url)
 
-def test_get_urls_in_table(database):
-    urls = database.get_urls()
-    actual_urls = database.get_session().query(Article.url).all()
-    assert len(urls) == len(actual_urls)
+        # Since it was deleted, it shouldn't be able to find the article
+        find = database.find_row(url)
+        assert find is False
 
-    for url in actual_urls:
-        assert(url[0] in urls)
+    def test_get_urls_in_table(self, database):
+        """
+        Test for:
+        get_urls()
+        See if function gets urls that are in the database.
+        :param database: DataBase that is storing article information.
+        :type database: sentinews.database.DataBase
+        """
+        urls = database.get_urls()
+        actual_urls = database.get_session().query(Article.url).all()
+        # Are there the same number of urls
+        assert len(urls) == len(actual_urls)
 
-def test_update_table_update_article(database):
-    url = 'test.com'
-    database.add_article_info(url,
-                              datetime.today(),
-                    'title',
-                    'news_co',
-                    'text')
-    assert database.in_table(url)
-    row = database.find_row(url)
-    assert row.vader_positive is None
-    assert row.vader_negative is None
-    assert row.vader_neutral is None
-    assert row.vader_compound is None
-    assert row.textblob_polarity is None
-    assert row.textblob_subjectivity is None
-    assert row.textblob_classification is None
-    assert row.textblob_p_pos is None
-    assert row.textblob_p_neg is None
-    assert row.lstm_category is None
-    assert row.lstm_p_pos is None
-    assert row.lstm_p_neu is None
-    assert row.lstm_p_neg is None
-    database.calculate_scores()
+        # Is each url actually in the database
+        for url in actual_urls:
+            assert (url[0] in urls)
 
-    row = database.find_row(url)
-    assert row.vader_positive is not None
-    assert row.vader_negative is not None
-    assert row.vader_neutral is not None
-    assert row.vader_compound is not None
-    assert row.textblob_polarity is not None
-    assert row.textblob_subjectivity is not None
-    assert row.textblob_classification is not None
-    assert row.textblob_p_pos is not None
-    assert row.textblob_p_neg is not None
-    assert row.lstm_category is not None
-    assert row.lstm_p_pos is not None
-    assert row.lstm_p_neu is not None
-    assert row.lstm_p_neg is not None
+    def test_add_info(self, database):
+        """
+        Test for:
+        in_table()
+        add_article_info()
+        calculate_scores()
 
-    database.delete_row(url)
-    assert database.find_row(url) is False
+        See if the information passed to add_article_info() ends up in the database.
+        See if the null sentiment scores get filled with real sentiment scores.
+        :param database: DataBase that is storing article information.
+        :type database: sentinews.database.DataBase
+        """
+        url = 'test.com'
+        database.add_article_info(url,
+                                  datetime.today(),
+                                  'title',
+                                  'news_co',
+                                  'text')
+        # Check if the url is in the database
+        assert database.in_table(url)
+
+        # Pull that information back and make sure there are no sentiment scores
+        row = database.find_row(url)
+        assert row.vader_positive is None
+        assert row.vader_negative is None
+        assert row.vader_neutral is None
+        assert row.vader_compound is None
+        assert row.textblob_polarity is None
+        assert row.textblob_subjectivity is None
+        assert row.textblob_classification is None
+        assert row.textblob_p_pos is None
+        assert row.textblob_p_neg is None
+        assert row.lstm_category is None
+        assert row.lstm_p_pos is None
+        assert row.lstm_p_neu is None
+        assert row.lstm_p_neg is None
+
+        # Calculate the sentiment scores and add them to database.
+        database.calculate_scores()
+        # Make sure that each score is not None
+        row = database.find_row(url)
+        assert row.vader_positive is not None
+        assert row.vader_negative is not None
+        assert row.vader_neutral is not None
+        assert row.vader_compound is not None
+        assert row.textblob_polarity is not None
+        assert row.textblob_subjectivity is not None
+        assert row.textblob_classification is not None
+        assert row.textblob_p_pos is not None
+        assert row.textblob_p_neg is not None
+        assert row.lstm_category is not None
+        assert row.lstm_p_pos is not None
+        assert row.lstm_p_neu is not None
+        assert row.lstm_p_neg is not None
+
+        # Delete the dummy row and make sure it is out of the database
+        database.delete_row(url)
+        assert database.find_row(url) is False
