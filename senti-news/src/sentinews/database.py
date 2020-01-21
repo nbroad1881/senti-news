@@ -110,9 +110,16 @@ class DataBase:
         Base.metadata.create_all(self.engine)
         return True
 
-    def get_session(self, database_url=None, echo=False):
-        database_url = database_url or self.database_url
-        Session = sessionmaker(bind=create_engine(database_url, echo=echo))
+    def get_session(self):
+        """
+        Get the sqlalchemy.orm.session.Session object for this database.
+        The session can be used for querying, adding/deleting rows, and committing the database changes
+        to be permanent. From database_url, an engine can be made. From an engine, a sessionmaker can be made.
+        From a sessionmaker, a Session can be made.
+        :return: sqlalchemy.orm.session.Session object
+        :rtype: sqlalchemy.orm.session.Session
+        """
+        Session = sessionmaker(bind=self.engine)
         return Session()
 
     def find_row(self, url):
