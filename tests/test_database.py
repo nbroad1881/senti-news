@@ -65,14 +65,20 @@ class TestDataBase:
         """
         assert database.create_article_table() is False
 
+    def test_get_session(self, database):
+        """
+        Test for:
+        get_session()
+        It should get the session information from the database specified in the environment variables.
+        """
+        session = database.get_session()
+        # Make sure it is getting a Session object.
+        assert isinstance(session, Session)
 
-def test_get_session(database):
-    session = database.get_session()
-    assert isinstance(session, Session)
-
-    assert re.search(r'\@(.*)\:', str(session.get_bind())).group(1) == os.environ.get('DB_ENDPOINT')
-    assert re.search(r'\:(\d+)\/', str(session.get_bind())).group(1) == os.environ.get('DB_PORT')
-    assert re.search(r'\d\/(.*)\)$', str(session.get_bind())).group(1) == os.environ.get('DB_NAME')
+        # Test if the database url in the session matches the environment variables
+        assert re.search(r'@(.*):', str(session.get_bind())).group(1) == os.environ.get('DB_ENDPOINT')
+        assert re.search(r':(\d+)/', str(session.get_bind())).group(1) == os.environ.get('DB_PORT')
+        assert re.search(r'\d/(.*)\)$', str(session.get_bind())).group(1) == os.environ.get('DB_NAME')
 
 
 test_url = ['random.com', 'example.com', 'universe.com']
