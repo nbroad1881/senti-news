@@ -131,7 +131,10 @@ class DataBase:
         :return: search result if found, False if not found.
         :rtype: sentinews.database.Article
         """
-        return self.session.query(Article).filter(Article.url == url).first() or False
+        session = self.get_session()
+        result = session.query(Article).filter(Article.url == url).first() or False
+        session.close()
+        return result or False
 
     def add_article_info(self, url, datetime, title, news_co, text=''):
         """
