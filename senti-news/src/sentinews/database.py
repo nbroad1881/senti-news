@@ -1,3 +1,9 @@
+"""
+This file is in charge of communicating with the database, both in creating tables and modifying values.
+class Article is a template for what each row in the database should be.
+class DataBase connects to the database listed in .env
+"""
+
 import os
 import logging
 
@@ -17,13 +23,13 @@ DB_URL = os.environ.get("DB_URL")
 
 Base = declarative_base()
 
-"""
-This file is in charge of communicating with the database, both in creating tables and storing
-results.
-"""
-
 
 class Article(Base):
+    """
+    Article extends the declarative_base() class from sqlalchemy. The variables will become the column names and the
+    __tablename__ will be the name of the table created in the database. The url of the article is the unique
+    identifier in the database.
+    """
     __tablename__ = 'articles'
     url = Column(Text, primary_key=True)
     datetime = Column(DateTime)
@@ -46,6 +52,10 @@ class Article(Base):
     lstm_p_neg = Column(Float)
 
     def __repr__(self):
+        """
+        :return: A dictionary of column names as keys and their values as values.
+        :rtype: dict
+        """
         return str({
             'url': self.url,
             'datetime': self.datetime,
@@ -70,6 +80,14 @@ class Article(Base):
 
 
 class DataBase:
+    """
+    Connects to a database that will store the article and sentiment information.
+    The database url is specified in the .env file. The url should have the form
+    ${DB_DIALECT}://${DB_USERNAME}:${DB_PASSWORD}@${DB_ENDPOINT}:${DB_PORT}/${DB_NAME}
+    Can create an table named "articles" for storing articles.
+    Can query "articles" for certain articles, searching by url.
+
+    """
 
     def __init__(self, database_url=None):
 
@@ -82,9 +100,12 @@ class DataBase:
     def create_article_table(self):
         """
         If there is not a table already in the database, it creates one and returns True.
-        If the table already exists, it returns False.
+        If the table already exists, it returns False. The table name is taken from the __table__
+        variable from any subclass of Base. In this case, from Article which has
+        __table__ = 'articles
+
         :return: True if table created, False if table already exists.
-        :rtype: Boolean.
+        :rtype: bool
         """
         if self.engine.dialect.has_table(self.engine, Article.__tablename__):
             return False
@@ -100,14 +121,30 @@ class DataBase:
         """
         True if url in database, False if not.
         Query comes back None if it can't find the url.
-        :param url:
-        :type url:
-        :return:
-        :rtype:
+        :param url: url to be checked if it is the database
+        :type url: str
+        :return: search result if found, False if not found.
+        :rtype: sentinews.database.Article
         """
         return self.session.query(Article).filter(Article.url == url).first() or False
 
-    def add_row(self, url, datetime, title, news_co, text=''):
+    def add_article_info(self, url, datetime, title, news_co, text=''):
+        """
+        Adds a row of article info to the database associated with this instance. It does NOT
+        add sentiment scores.
+        :param url: url of article
+        :type url: str
+        :param datetime: date of article
+        :type datetime: datetime.datetime
+        :param title: title of article
+        :type title: str
+        :param news_co: news company that published the article
+        :type news_co: str
+        :param text: text content of the article
+        :type text: str
+        :return: True if the row is added successfully, False if it is already in the database.
+        :rtype: bool
+        """
         if url in self.urls:
             logging.info(f"{title} already in db -- skipping")
             return False
@@ -128,12 +165,82 @@ class DataBase:
         return [item[0] for item in self.session.query(Article.url).all()]
 
     def in_table(self, url):
+        """
+        Returns True if the url is in the instance set of urls. Faster than find_row() which queries the
+        database. find_row() also returns all the information.
+        :param url: url to check
+        :type url: str
+        :return: True if in set, otherwise False
+        :rtype: bool
+        """
         return url in self.urls
 
-    def update_article(self, article, url=None, datetime=None, title=None, news_co=None, text=None, vader_positive=None,
-                       vader_negative=None, vader_neutral=None, vader_compound=None, textblob_polarity=None,
-                       textblob_subjectivity=None, textblob_classification=None, textblob_p_pos=None,
-                       textblob_p_neg=None, lstm_category=None, lstm_p_pos=None, lstm_p_neu=None, lstm_p_neg=None):
+    def update_article(self,
+                       article,
+                       session,
+                       url=None,
+                       datetime=None,
+                       title=None,
+                       news_co=None,
+                       text=None,
+                       vader_positive=None,
+                       vader_negative=None,
+                       vader_neutral=None,
+                       vader_compound=None,
+                       textblob_polarity=None,
+                       textblob_subjectivity=None,
+                       textblob_classification=None,
+                       textblob_p_pos=None,
+                       textblob_p_neg=None,
+                       lstm_category=None,
+                       lstm_p_pos=None,
+                       lstm_p_neu=None,
+                       lstm_p_neg=None):
+        """
+        Updates given article with the passed values. Commits to database after updating.
+        :param session: session that the article was pulled from
+        :type session: sqlalchemy.orm.session.Session
+        :param article: article object to be updated
+        :type article: sentinews.database.Article
+        :param url: url of article
+        :type url: str
+        :param datetime: datetime of article publishing
+        :type datetime: datetime.datetime
+        :param title: title of article
+        :type title: str
+        :param news_co: news company that published article
+        :type news_co: str
+        :param text: text content of article
+        :type text: str
+        :param vader_positive: positive vader sentiment score of article title [0-1]
+        :type vader_positive: float
+        :param vader_negative: negative vader sentiment score of article title [0-1]
+        :type vader_negative: float
+        :param vader_neutral: neutral vader sentiment score of article title [0-1]
+        :type vader_neutral: float
+        :param vader_compound: compound vader sentiment score of article title [0-1]
+        :type vader_compound: float
+        :param textblob_polarity: polarity textblob sentiment score of article title [-1,-1]
+        :type textblob_polarity: float
+        :param textblob_subjectivity: textblob subjectivity sentiment score of article title [0-1]
+        :type textblob_subjectivity: float
+        :param textblob_classification: textblob classification of article title ('pos' or 'neg')
+        :type textblob_classification: str
+        :param textblob_p_pos: probability that title has positive sentiment
+        :type textblob_p_pos: float
+        :param textblob_p_neg: probability that title has negative sentiment
+        :type textblob_p_neg: float
+        :param lstm_category: lstm classification of article title sentiment ('positive', 'neutral', 'negative')
+        :type lstm_category: str
+        :param lstm_p_pos: probability of title having positive sentiment
+        :type lstm_p_pos: float
+        :param lstm_p_neu: probability of title having neutral sentiment
+        :type lstm_p_neu: float
+        :param lstm_p_neg: probability of title having negative sentiment
+        :type lstm_p_neg: float
+        :return: None
+        :rtype: NoneType
+        """
         if url is not None:
             article.url = url
             self.urls.add(url)
@@ -158,8 +265,14 @@ class DataBase:
 
     def calculate_scores(self):
         """
-        Looks at self.session's table and checks for null sentiment scores.
-        If there are null values, it will use every model to evaluate each row.
+        Looks at table from self.session() and checks for a null sentiment score in:
+        1.) vader_compound,
+        2.) textblob_polarity,
+        3.) lstm_category
+
+        If there are null values, it will use all models (vader, textblob, lstm) to evaluate each row.
+        The LTSM model is loaded from the path and filename provided in the environment variables
+        'LSTM_PKL_MODEL_DIR' and 'LSTM_PKL_FILENAME'
         :return: Results that were changed
         :rtype: list of sentinews.database.Article objects
         """
@@ -197,15 +310,7 @@ class DataBase:
         logging.info("Table is up-to-date")
         return results
 
-    def close_session(self):
-        self.session.close()
-
-    def fill_null(self):
-        self.calculate_scores()
-        self.close_session()
-
 
 if __name__ == '__main__':
     db = DataBase()
     db.calculate_scores()
-    db.close_session()
