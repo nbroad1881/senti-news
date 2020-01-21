@@ -92,10 +92,8 @@ class DataBase:
     def __init__(self, database_url=None):
 
         self.database_url = database_url or DB_URL
-
         self.engine = create_engine(self.database_url)
-        self.session = self.get_session(database_url=self.database_url)
-        self.urls = set(self.get_urls())
+        self.urls = self.get_urls()
 
     def create_article_table(self):
         """
@@ -162,7 +160,15 @@ class DataBase:
         self.session.commit()
 
     def get_urls(self):
-        return [item[0] for item in self.session.query(Article.url).all()]
+        """
+        Returns a set of urls from the database.
+        :return: set of urls from database
+        :rtype: set
+        """
+        session = self.get_session()
+        urls = set(item[0] for item in session.query(Article.url).all())
+        session.close()
+        return urls
 
     def in_table(self, url):
         """
