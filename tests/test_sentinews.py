@@ -97,6 +97,9 @@ class TestDataBase:
         find_row()
         delete_row()
         """
+        # Start by deleting row just in case it is already in the database
+        database.delete_row(url)
+
         # Start by adding a dummy article
         database.add_article_info(url, datetime_, title, news_co, text)
         # Get that article from the database
@@ -153,6 +156,8 @@ class TestDataBase:
         :type database: sentinews.database.DataBase
         """
         url = 'test.com'
+        # delete row in case it is already in database
+        database.delete_row(url)
         database.add_article_info(url,
                                   datetime.today(),
                                   'title',
