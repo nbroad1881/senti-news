@@ -13,12 +13,7 @@ load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 
-DB_ENDPOINT = os.environ.get('DB_ENDPOINT')
-DB_PORT = os.environ.get('DB_PORT')
-DB_USERNAME = os.environ.get('DB_USERNAME')
-DB_PASSWORD = os.environ.get('DB_PASSWORD')
-DB_NAME = os.environ.get('DB_NAME')
-DB_URL = f"postgres://{DB_USERNAME}:{DB_PASSWORD}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
+DB_URL = os.environ.get("DB_URL")
 
 Base = declarative_base()
 
