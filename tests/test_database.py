@@ -34,18 +34,14 @@ def my_article():
                    lstm_p_pos=-.2,
                    lstm_p_neg=-.3)
 
-
-DB_ENDPOINT = os.environ.get('DB_ENDPOINT')
-DB_PORT = os.environ.get('DB_PORT')
-DB_USERNAME = os.environ.get('DB_USERNAME')
-DB_PASSWORD = os.environ.get('DB_PASSWORD')
-DB_NAME = os.environ.get('DB_NAME')
-DB_URL = f"postgres://{DB_USERNAME}:{DB_PASSWORD}@{DB_ENDPOINT}:{DB_PORT}/{DB_NAME}"
-
-
-@pytest.fixture(params=[DB_URL])
-def database(request):
-    return DataBase(database_url=request.param)
+@pytest.fixture()
+def database():
+    """
+    DataBase object to be used in other tests.
+    :return: DataBase with default configuration from environment variables.
+    :rtype: sentinews.DataBase
+    """
+    return DataBase()
 
 
 def test_create_article_table(database):
@@ -77,7 +73,7 @@ test_text = ['first piece of text', 'second piece of text', 'third piece of text
                              test_text,
                          )))
 def test_add_find_and_delete_row(url, datetime_, title, news_co, text, database):
-    database.add_row(url, datetime_, title, news_co, text)
+    database.add_article_info(url, datetime_, title, news_co, text)
     result = database.get_session().query(Article).filter(Article.url == url).first()
     assert result is not None
     assert result.datetime == datetime_
@@ -102,8 +98,8 @@ def test_get_urls_in_table(database):
 
 def test_update_table_update_article(database):
     url = 'test.com'
-    database.add_row(url,
-                    datetime.today(),
+    database.add_article_info(url,
+                              datetime.today(),
                     'title',
                     'news_co',
                     'text')
@@ -123,6 +119,7 @@ def test_update_table_update_article(database):
     assert row.lstm_p_neu is None
     assert row.lstm_p_neg is None
     database.calculate_scores()
+
     row = database.find_row(url)
     assert row.vader_positive is not None
     assert row.vader_negative is not None
