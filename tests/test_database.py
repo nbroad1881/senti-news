@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from sqlalchemy.orm.session import Session
 
 from sentinews.database import Article, DataBase
-
+from sentinews.models import TextBlobAnalyzer, VaderAnalyzer, LSTMAnalyzer
 
 load_dotenv()
 
@@ -203,3 +203,70 @@ class TestDataBase:
         # Delete the dummy row and make sure it is out of the database
         database.delete_row(url)
         assert database.find_row(url) is False
+
+
+class TestModels:
+    """
+    Test models in sentinews.models.py
+    """
+    sample_sentence = "This is a great day."
+
+    # Create a model fixture for each.
+    @pytest.fixture
+    def textblob_analyzer(self):
+        return TextBlobAnalyzer()
+
+    @pytest.fixture
+    def vader_analyzer(self):
+        return VaderAnalyzer()
+
+    # LSTMAnalyzer needs to have the LSTM model directory and filename to load.
+    @pytest.fixture
+    def lstm_analyzer(self):
+        return LSTMAnalyzer(model_dir=os.environ.get("LSTM_PKL_MODEL_DIR"),
+                            model_name=os.environ.get('LSTM_PKL_FILENAME'))
+
+    # Testing TextBlobAnalyzer
+    @pytest.mark.parametrize("sentence", [sample_sentence])
+    def test_textblob_evaluate(self, sentence, textblob_analyzer):
+        sentiment = textblob_analyzer.evaluate(sentence)
+
+        # Make sure sentiment is within range
+        # These are probabilities, so values should be between 0 and 1.
+        assert 0 <= sentiment['p_pos'] <= 1
+        assert 0 <= sentiment['p_neg'] <= 1
+
+        # All outcomes must add to 1
+        assert 1 - 1e5 < sentiment['p_pos'] + sentiment['p_neg'] < 1 + 1e5
+        assert sentiment['classification'] in ['neg', 'pos']
+
+    # Testing VaderAnalyzer
+    @pytest.mark.parametrize("sentence", [sample_sentence])
+    def test_vader_evaluate(self, sentence, vader_analyzer):
+        sentiment = vader_analyzer.evaluate(sentence)
+
+        # Make sure sentiment is within range
+        # These are probabilities, so values should be between 0 and 1.
+        assert 0 <= sentiment['p_neg'] <= 1
+        assert 0 <= sentiment['p_pos'] <= 1
+        assert 0 <= sentiment['p_neu'] <= 1
+
+        # Probabilities must add to 1
+        assert 1 - 1e5 < sentiment['p_pos'] + sentiment['p_neg'] + sentiment['p_neu'] < 1 + 1e5
+
+        # Compound score uses proprietary algorithm and is between -1 and 1
+        assert -1 <= sentiment['compound'] <= 1
+
+    # Testing LSTMAnalyzer
+    @pytest.mark.parametrize("sentence", [sample_sentence])
+    def test_lstm_evaluate(self, sentence, lstm_analyzer):
+        sentiment = lstm_analyzer.evaluate(sentence)
+
+        # Make sure sentiment is within range
+        # These are probabilities, so values should be between 0 and 1.
+        assert 0 <= sentiment['p_neg'] <= 1
+        assert 0 <= sentiment['p_pos'] <= 1
+        assert 0 <= sentiment['p_neu'] <= 1
+
+        # Probabilities must add to 1
+        assert 1 - 1e5 < sentiment['p_pos'] + sentiment['p_neg'] + sentiment['p_neu'] < 1 + 1e5
