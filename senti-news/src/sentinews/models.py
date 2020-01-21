@@ -116,5 +116,10 @@ class VaderAnalyzer:
         """
         score = self.analyzer.polarity_scores(text)
         if all_scores:
-            return score
+            return {
+                'p_pos': score['pos'],
+                'p_neg': score['neg'],
+                'p_neu': score['neu'],
+                'compound': score['compound']
+            }
         return dict(compound=score.get('compound'))
