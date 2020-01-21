@@ -1,5 +1,6 @@
 import pathlib
 
+from dotenv import load_dotenv
 from textblob import TextBlob
 from textblob.sentiments import NaiveBayesAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -19,28 +20,29 @@ The saved model is then stored locally.
 
 Each model has its own class and a method to evaluate a string's sentiment.
 """
+load_dotenv()
+logging.basicConfig(level=logging.INFO)
 
 
 class LSTMAnalyzer:
     """
 
-    """
-
-    def __init__(self, model_dir, model_name):
+    def __init__(self, model_dir=None, model_name=None):
         """
 
         :param model_dir:
         :param model_name:
         """
-        if model_dir is None:
-            raise
-        else:
+        if model_dir and model_name:
             self.model_dir = pathlib.Path(model_dir)
-        if model_name is None:
-            raise
-        else:
             self.model_name = model_name
-        self.model = load_learner(self.model_dir, model_name)
+        else:
+            self.model_dir = pathlib.Path(os.environ.get("LSTM_PKL_MODEL_DIR"))
+            self.model_name = os.environ.get('LSTM_PKL_FILENAME')
+        try:
+            self.model = load_learner(self.model_dir, self.model_name)
+        except BaseException as e:
+            logging.info("Failed to load LSTM model. " + str(e))
 
     def evaluate(self, text):
         """
