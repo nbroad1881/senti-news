@@ -25,13 +25,14 @@ logging.basicConfig(level=logging.INFO)
 
 
 class LSTMAnalyzer:
-    """
 
     def __init__(self, model_dir=None, model_name=None):
         """
-
-        :param model_dir:
-        :param model_name:
+        Load a fastai.Learner object that was made by export()
+        :param model_dir: Directory that holds saved model
+        :type model_dir: str or Path
+        :param model_name: Name of model to load
+        :type model_name: str
         """
         if model_dir and model_name:
             self.model_dir = pathlib.Path(model_dir)
@@ -46,9 +47,12 @@ class LSTMAnalyzer:
 
     def evaluate(self, text):
         """
-
-        :param text:
-        :return:
+        Gives the sentiment scores for the given text.
+        :param text: Text to be scored for sentiment
+        :type text: str
+        :return: dictionary of sentiment scores
+        'p_pos', 'p_neg', 'p_neu' are the probabilities of those classifications.
+        :rtype: dict
         """
         category, num_tensor, prob_tensor = self.model.predict(text)
 
@@ -62,20 +66,18 @@ class LSTMAnalyzer:
 
 
 class TextBlobAnalyzer:
-    """
-
-    """
 
     def __init__(self):
         self.nb = NaiveBayesAnalyzer()
 
     def evaluate(self, text, all_scores=True, naive=True):
         """
-
-        :param text:
-        :param all_scores:
-        :param naive:
-        :return:
+        Gives the sentiment scores for the given text using the NaiveBayes analyzer.
+        :param text: Text to be scored for sentiment
+        :type text: str
+        :return: dictionary of sentiment scores. classification can be 'pos' or 'neg'
+        p_pos and p_neg are the probabilities of those classifications.
+        :rtype: dict
         """
         if naive:
             return self.nb_evaluate(text, all_scores=all_scores)
@@ -111,10 +113,13 @@ class VaderAnalyzer:
 
     def evaluate(self, text, all_scores=True):
         """
-
-        :param text:
-        :param all_scores:
-        :return:
+        Gives the sentiment scores for the given text using the Vader analyzer.
+        :param text: Text to be scored for sentiment
+        :type text: str
+        :return: dictionary of sentiment scores.
+        'p_pos', 'p_neg', 'p_neu' are the probabilities of those classifications.
+        'compound' is a combined score using an unknown proprietary algorithm
+        :rtype: dict
         """
         score = self.analyzer.polarity_scores(text)
         if all_scores:
