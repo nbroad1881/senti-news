@@ -1,3 +1,7 @@
+"""
+Tests to make sure functionality of database.py is working.
+"""
+
 from datetime import datetime
 import os
 import re
@@ -13,7 +17,12 @@ load_dotenv()
 
 
 @pytest.fixture
-def my_article():
+def article():
+    """
+    Article object. Currently unused in any test.
+    :return:  Example Article object
+    :rtype: sentinews.database.Article
+    """
     return Article(url='www.example.com',
                    datetime=datetime(2000, 1, 1),
                    title='Trump is president.',
@@ -45,6 +54,14 @@ def database():
 
 
 def test_create_article_table(database):
+    """
+    Test the create_article_table function in database.py.
+    The function returns true if there is
+    :param database: DataBase fixture
+    :type database: sentinews.DataBase
+    :return: None
+    :rtype: None
+    """
     assert database.create_article_table() is False
 
 
