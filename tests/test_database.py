@@ -16,53 +16,54 @@ from sentinews.database import Article, DataBase
 load_dotenv()
 
 
-@pytest.fixture
-def article():
-    """
-    Article object. Currently unused in any test.
-    :return:  Example Article object
-    :rtype: sentinews.database.Article
-    """
-    return Article(url='www.example.com',
-                   datetime=datetime(2000, 1, 1),
-                   title='Trump is president.',
-                   news_co='Fox News',
-                   text='A great article about the president.',
-                   vader_positive=.1,
-                   vader_negative=.2,
-                   vader_neutral=.3,
-                   vader_compound=.4,
-                   textblob_polarity=.5,
-                   textblob_subjectivity=.6,
-                   textblob_classification='pos',
-                   textblob_p_pos=.7,
-                   textblob_p_neg=.8,
-                   lstm_score=.9,
-                   lstm_category='neg',
-                   lstm_p_neu=-.1,
-                   lstm_p_pos=-.2,
-                   lstm_p_neg=-.3)
+class TestDataBase:
 
-@pytest.fixture()
-def database():
-    """
-    DataBase object to be used in other tests.
-    :return: DataBase with default configuration from environment variables.
-    :rtype: sentinews.DataBase
-    """
-    return DataBase()
+    @pytest.fixture
+    def article(self, ):
+        """
+        Article object. Currently unused in any test.
+        :return:  Example Article object
+        :rtype: sentinews.database.Article
+        """
+        return Article(url='www.example.com',
+                       datetime=datetime(2000, 1, 1),
+                       title='Trump is president.',
+                       news_co='Fox News',
+                       text='A great article about the president.',
+                       vader_positive=.1,
+                       vader_negative=.2,
+                       vader_neutral=.3,
+                       vader_compound=.4,
+                       textblob_polarity=.5,
+                       textblob_subjectivity=.6,
+                       textblob_classification='pos',
+                       textblob_p_pos=.7,
+                       textblob_p_neg=.8,
+                       lstm_score=.9,
+                       lstm_category='neg',
+                       lstm_p_neu=-.1,
+                       lstm_p_pos=-.2,
+                       lstm_p_neg=-.3)
 
+    @pytest.fixture()
+    def database(self, ):
+        """
+        DataBase object to be used in other tests.
+        :return: DataBase with default configuration from environment variables.
+        :rtype: sentinews.DataBase
+        """
+        return DataBase()
 
-def test_create_article_table(database):
-    """
-    Test the create_article_table function in database.py.
-    The function returns true if there is
-    :param database: DataBase fixture
-    :type database: sentinews.DataBase
-    :return: None
-    :rtype: None
-    """
-    assert database.create_article_table() is False
+    def test_create_article_table(self, database):
+        """
+        Test for
+        create_article_table()
+        The function returns False if there is already a table.
+        There should already be a table so it should False.
+        :param database: DataBase fixture
+        :type database: sentinews.DataBase
+        """
+        assert database.create_article_table() is False
 
 
 def test_get_session(database):
