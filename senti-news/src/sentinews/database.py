@@ -36,9 +36,9 @@ class Article(Base):
     title = Column(Text)
     news_co = Column(String(50))
     text = Column(Text)
-    vader_positive = Column(Float)
-    vader_negative = Column(Float)
-    vader_neutral = Column(Float)
+    vader_p_pos = Column(Float)
+    vader_p_neg = Column(Float)
+    vader_p_neu = Column(Float)
     vader_compound = Column(Float)
     textblob_polarity = Column(Float)
     textblob_subjectivity = Column(Float)
@@ -62,13 +62,10 @@ class Article(Base):
             'title': self.title,
             'news_co': self.news_co,
             'text': self.text,
-            'vader_positive': self.vader_positive,
-            'vader_negative': self.vader_negative,
-            'vader_neutral': self.vader_neutral,
+            'vader_p_pos': self.vader_p_pos,
+            'vader_p_neg': self.vader_p_neg,
+            'vader_p_neu': self.vader_p_neu,
             'vader_compound': self.vader_compound,
-            'textblob_polarity': self.textblob_polarity,
-            'textblob_subjectivity': self.textblob_subjectivity,
-            'textblob_classification': self.textblob_classification,
             'textblob_p_pos': self.textblob_p_pos,
             'textblob_p_neg': self.textblob_p_neg,
             'lstm_score': self.lstm_score,
@@ -213,13 +210,10 @@ class DataBase:
                        title=None,
                        news_co=None,
                        text=None,
-                       vader_positive=None,
-                       vader_negative=None,
-                       vader_neutral=None,
+                       vader_p_pos=None,
+                       vader_p_neg=None,
+                       vader_p_neu=None,
                        vader_compound=None,
-                       textblob_polarity=None,
-                       textblob_subjectivity=None,
-                       textblob_classification=None,
                        textblob_p_pos=None,
                        textblob_p_neg=None,
                        lstm_category=None,
@@ -242,26 +236,18 @@ class DataBase:
         :type news_co: str
         :param text: text content of article
         :type text: str
-        :param vader_positive: positive vader sentiment score of article title [0-1]
-        :type vader_positive: float
-        :param vader_negative: negative vader sentiment score of article title [0-1]
-        :type vader_negative: float
-        :param vader_neutral: neutral vader sentiment score of article title [0-1]
-        :type vader_neutral: float
+        :param vader_p_pos: positive vader sentiment score of article title [0-1]
+        :type vader_p_pos: float
+        :param vader_p_neg: negative vader sentiment score of article title [0-1]
+        :type vader_p_neg: float
+        :param vader_p_neu: neutral vader sentiment score of article title [0-1]
+        :type vader_p_neu: float
         :param vader_compound: compound vader sentiment score of article title [0-1]
         :type vader_compound: float
-        :param textblob_polarity: polarity textblob sentiment score of article title [-1,-1]
-        :type textblob_polarity: float
-        :param textblob_subjectivity: textblob subjectivity sentiment score of article title [0-1]
-        :type textblob_subjectivity: float
-        :param textblob_classification: textblob classification of article title ('pos' or 'neg')
-        :type textblob_classification: str
         :param textblob_p_pos: probability that title has positive sentiment
         :type textblob_p_pos: float
         :param textblob_p_neg: probability that title has negative sentiment
         :type textblob_p_neg: float
-        :param lstm_category: lstm classification of article title sentiment ('positive', 'neutral', 'negative')
-        :type lstm_category: str
         :param lstm_p_pos: probability of title having positive sentiment
         :type lstm_p_pos: float
         :param lstm_p_neu: probability of title having neutral sentiment
@@ -278,16 +264,12 @@ class DataBase:
         if title is not None: article.title = title
         if news_co is not None: article.news_co = news_co
         if text is not None: article.text = text
-        if vader_positive is not None: article.vader_positive = vader_positive
-        if vader_negative is not None: article.vader_negative = vader_negative
-        if vader_neutral is not None: article.vader_neutral = vader_neutral
+        if vader_p_pos is not None: article.vader_p_pos = vader_p_pos
+        if vader_p_neg is not None: article.vader_p_neg = vader_p_neg
+        if vader_p_neu is not None: article.vader_p_neu = vader_p_neu
         if vader_compound is not None: article.vader_compound = vader_compound
-        if textblob_polarity is not None: article.textblob_polarity = textblob_polarity
-        if textblob_subjectivity is not None: article.textblob_subjectivity = textblob_subjectivity
-        if textblob_classification is not None: article.textblob_classification = textblob_classification
         if textblob_p_pos is not None: article.textblob_p_pos = textblob_p_pos
         if textblob_p_neg is not None: article.textblob_p_neg = textblob_p_neg
-        if lstm_category is not None: article.lstm_category = lstm_category
         if lstm_p_pos is not None: article.lstm_p_pos = lstm_p_pos
         if lstm_p_neu is not None: article.lstm_p_neu = lstm_p_neu
         if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
@@ -296,9 +278,9 @@ class DataBase:
     def calculate_scores(self):
         """
         Looks at table from self.session() and checks for a null sentiment score in:
-        1.) vader_compound,
-        2.) textblob_polarity,
-        3.) lstm_category
+        1.) vader_p_pos
+        2.) textblob_p_pos
+        3.) lstm_p_pos
 
         If there are null values, it will use all models (vader, textblob, lstm) to evaluate each row.
         The LTSM model is loaded from the path and filename provided in the environment variables
@@ -308,31 +290,26 @@ class DataBase:
         """
         va = VaderAnalyzer()
         tb = TextBlobAnalyzer()
-        lstm = LSTMAnalyzer(model_dir=os.environ.get('LSTM_PKL_MODEL_DIR'),
-                            model_name=os.environ.get('LSTM_PKL_FILENAME'))
+        lstm = LSTMAnalyzer()
         session = self.get_session()
         results = session.query(Article). \
-            filter(or_(Article.vader_compound == None,
-                       Article.textblob_polarity == None,
-                       Article.lstm_category == None)).all()
+            filter(or_(Article.vader_p_pos == None,
+                       Article.textblob_p_pos == None,
+                       Article.lstm_p_pos == None)).all()
         logging.info(f"{len(results)} rows to update.")
         for row in results:
             title = row.title
-            vader_dict = va.evaluate(title, all_scores=True)
-            tb_dict = tb.evaluate(title, all_scores=True, naive=False)
-            tb_nb_dict = tb.evaluate(title, all_scores=True, naive=True)
+            vader_dict = va.evaluate(title)
+            tb_dict = tb.evaluate(title)
             lstm_dict = lstm.evaluate(title)
             self.update_article(row,
                                 session=session,
                                 vader_compound=vader_dict['compound'],
-                                vader_positive=vader_dict['p_pos'],
-                                vader_negative=vader_dict['p_neg'],
-                                vader_neutral=vader_dict['p_neu'],
-                                textblob_polarity=tb_dict['polarity'],
-                                textblob_subjectivity=tb_dict['subjectivity'],
-                                textblob_classification=tb_nb_dict['classification'],
-                                textblob_p_neg=tb_nb_dict['p_neg'],
-                                textblob_p_pos=tb_nb_dict['p_pos'],
+                                vader_p_pos=vader_dict['p_pos'],
+                                vader_p_neg=vader_dict['p_neg'],
+                                vader_p_neu=vader_dict['p_neu'],
+                                textblob_p_neg=tb_dict['p_neg'],
+                                textblob_p_pos=tb_dict['p_pos'],
                                 lstm_category=lstm_dict['category'],
                                 lstm_p_neu=lstm_dict['p_neu'],
                                 lstm_p_pos=lstm_dict['p_pos'],
