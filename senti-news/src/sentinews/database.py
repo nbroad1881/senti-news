@@ -158,16 +158,30 @@ class DataBase:
             return False
         logging.info(f"{title} added to db")
         article = Article(url=url, datetime=datetime, title=title, news_co=news_co, text=text)
-        self.session.add(article)
-        self.session.commit()
+        session = self.get_session()
+        session.add(article)
+        session.commit()
+        session.close()
         self.urls.add(url)
         return True
 
     def delete_row(self, url):
-        result = self.session.query(Article). \
-            filter(Article.url == url).first()
-        self.session.delete(result)
-        self.session.commit()
+        """
+        Deletes the row in the database by url.
+        :param url: url to find in the database
+        :type url: str
+        :return: True if deleted, False if not found in database
+        :rtype: bool
+        """
+        session = self.get_session()
+        result = self.find_row(url)
+        if result is False:
+            session.close()
+            return False
+        session.delete(result)
+        session.commit()
+        session.close()
+        return True
 
     def get_urls(self):
         """
@@ -277,7 +291,7 @@ class DataBase:
         if lstm_p_pos is not None: article.lstm_p_pos = lstm_p_pos
         if lstm_p_neu is not None: article.lstm_p_neu = lstm_p_neu
         if lstm_p_neg is not None: article.lstm_p_neg = lstm_p_neg
-        self.session.commit()
+        session.commit()
 
     def calculate_scores(self):
         """
@@ -296,7 +310,8 @@ class DataBase:
         tb = TextBlobAnalyzer()
         lstm = LSTMAnalyzer(model_dir=os.environ.get('LSTM_PKL_MODEL_DIR'),
                             model_name=os.environ.get('LSTM_PKL_FILENAME'))
-        results = self.session.query(Article). \
+        session = self.get_session()
+        results = session.query(Article). \
             filter(or_(Article.vader_compound == None,
                        Article.textblob_polarity == None,
                        Article.lstm_category == None)).all()
@@ -307,10 +322,12 @@ class DataBase:
             tb_dict = tb.evaluate(title, all_scores=True, naive=False)
             tb_nb_dict = tb.evaluate(title, all_scores=True, naive=True)
             lstm_dict = lstm.evaluate(title)
-            self.update_article(row, vader_compound=vader_dict['compound'],
-                                vader_positive=vader_dict['pos'],
-                                vader_negative=vader_dict['neg'],
-                                vader_neutral=vader_dict['neu'],
+            self.update_article(row,
+                                session=session,
+                                vader_compound=vader_dict['compound'],
+                                vader_positive=vader_dict['p_pos'],
+                                vader_negative=vader_dict['p_neg'],
+                                vader_neutral=vader_dict['p_neu'],
                                 textblob_polarity=tb_dict['polarity'],
                                 textblob_subjectivity=tb_dict['subjectivity'],
                                 textblob_classification=tb_nb_dict['classification'],
@@ -322,7 +339,7 @@ class DataBase:
                                 lstm_p_neg=lstm_dict['p_neg'],
                                 )
 
-
+        session.close()
         logging.info("Table is up-to-date")
         return results
 
