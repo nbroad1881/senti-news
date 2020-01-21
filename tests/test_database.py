@@ -56,11 +56,9 @@ def test_get_session(database):
     session = database.get_session()
     assert isinstance(session, Session)
 
-
-
-    assert re.findall(r'\@(.*)\:', str(session.get_bind()))[0] == DB_ENDPOINT
-    assert re.findall(r'\:(\d+)\/', str(session.get_bind()))[0] == DB_PORT
-    assert re.findall(r'\d\/(.*)\)$', str(session.get_bind()))[0] == DB_NAME
+    assert re.search(r'\@(.*)\:', str(session.get_bind())).group(1) == os.environ.get('DB_ENDPOINT')
+    assert re.search(r'\:(\d+)\/', str(session.get_bind())).group(1) == os.environ.get('DB_PORT')
+    assert re.search(r'\d\/(.*)\)$', str(session.get_bind())).group(1) == os.environ.get('DB_NAME')
 
 
 test_url = ['random.com', 'example.com', 'universe.com']
