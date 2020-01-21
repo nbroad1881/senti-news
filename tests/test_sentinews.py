@@ -30,17 +30,12 @@ class TestDataBase:
                        title='Trump is president.',
                        news_co='Fox News',
                        text='A great article about the president.',
-                       vader_positive=.1,
-                       vader_negative=.2,
-                       vader_neutral=.3,
+                       vader_p_pos=.1,
+                       vader_p_neg=.2,
+                       vader_p_neu=.3,
                        vader_compound=.4,
-                       textblob_polarity=.5,
-                       textblob_subjectivity=.6,
-                       textblob_classification='pos',
                        textblob_p_pos=.7,
                        textblob_p_neg=.8,
-                       lstm_score=.9,
-                       lstm_category='neg',
                        lstm_p_neu=-.1,
                        lstm_p_pos=-.2,
                        lstm_p_neg=-.3)
@@ -168,16 +163,12 @@ class TestDataBase:
 
         # Pull that information back and make sure there are no sentiment scores
         row = database.find_row(url)
-        assert row.vader_positive is None
-        assert row.vader_negative is None
-        assert row.vader_neutral is None
+        assert row.vader_p_pos is None
+        assert row.vader_p_neg is None
+        assert row.vader_p_neu is None
         assert row.vader_compound is None
-        assert row.textblob_polarity is None
-        assert row.textblob_subjectivity is None
-        assert row.textblob_classification is None
         assert row.textblob_p_pos is None
         assert row.textblob_p_neg is None
-        assert row.lstm_category is None
         assert row.lstm_p_pos is None
         assert row.lstm_p_neu is None
         assert row.lstm_p_neg is None
@@ -186,16 +177,12 @@ class TestDataBase:
         database.calculate_scores()
         # Make sure that each score is not None
         row = database.find_row(url)
-        assert row.vader_positive is not None
-        assert row.vader_negative is not None
-        assert row.vader_neutral is not None
+        assert row.vader_p_pos is not None
+        assert row.vader_p_neg is not None
+        assert row.vader_p_neu is not None
         assert row.vader_compound is not None
-        assert row.textblob_polarity is not None
-        assert row.textblob_subjectivity is not None
-        assert row.textblob_classification is not None
         assert row.textblob_p_pos is not None
         assert row.textblob_p_neg is not None
-        assert row.lstm_category is not None
         assert row.lstm_p_pos is not None
         assert row.lstm_p_neu is not None
         assert row.lstm_p_neg is not None
@@ -223,8 +210,7 @@ class TestModels:
     # LSTMAnalyzer needs to have the LSTM model directory and filename to load.
     @pytest.fixture
     def lstm_analyzer(self):
-        return LSTMAnalyzer(model_dir=os.environ.get("LSTM_PKL_MODEL_DIR"),
-                            model_name=os.environ.get('LSTM_PKL_FILENAME'))
+        return LSTMAnalyzer()
 
     # Testing TextBlobAnalyzer
     @pytest.mark.parametrize("sentence", [sample_sentence])
@@ -238,7 +224,6 @@ class TestModels:
 
         # All outcomes must add to 1
         assert 1 - 1e5 < sentiment['p_pos'] + sentiment['p_neg'] < 1 + 1e5
-        assert sentiment['classification'] in ['neg', 'pos']
 
     # Testing VaderAnalyzer
     @pytest.mark.parametrize("sentence", [sample_sentence])
