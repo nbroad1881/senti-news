@@ -1,4 +1,6 @@
 import pathlib
+import logging
+import os
 
 from dotenv import load_dotenv
 from textblob import TextBlob
@@ -54,11 +56,10 @@ class LSTMAnalyzer:
         'p_pos', 'p_neg', 'p_neu' are the probabilities of those classifications.
         :rtype: dict
         """
-        category, num_tensor, prob_tensor = self.model.predict(text)
+        # Other variables returned are unnecessary
+        _, _, prob_tensor = self.model.predict(text)
 
         return {
-            'category': str(category),
-            'num': int(num_tensor),
             'p_pos': round(float(prob_tensor[2]), 3),
             'p_neu': round(float(prob_tensor[1]), 3),
             'p_neg': round(float(prob_tensor[0]), 3)
@@ -70,7 +71,7 @@ class TextBlobAnalyzer:
     def __init__(self):
         self.nb = NaiveBayesAnalyzer()
 
-    def evaluate(self, text, all_scores=True, naive=True):
+    def evaluate(self, text):
         """
         Gives the sentiment scores for the given text using the NaiveBayes analyzer.
         :param text: Text to be scored for sentiment
@@ -79,28 +80,10 @@ class TextBlobAnalyzer:
         p_pos and p_neg are the probabilities of those classifications.
         :rtype: dict
         """
-        if naive:
-            return self.nb_evaluate(text, all_scores=all_scores)
-
-        sentiment = TextBlob(text).sentiment
-        if all_scores:
-            return dict(polarity=round(sentiment.polarity, 3), subjectivity=round(sentiment.subjectivity, 3))
-        return dict(polarity=round(sentiment.polarity, 3))
-
-    def nb_evaluate(self, text, all_scores=False):
-        """
-
-        :param text:
-        :param all_scores:
-        :return:
-        """
 
         sentiment = TextBlob(text, analyzer=self.nb).sentiment
-        if all_scores:
-            return dict(classification=sentiment.classification,
-                        p_pos=round(sentiment.p_pos, 3),
-                        p_neg=round(sentiment.p_neg, 3))
-        return dict(classification=sentiment.classification)
+        return dict(p_pos=round(sentiment.p_pos, 3),
+                    p_neg=round(sentiment.p_neg, 3))
 
 
 class VaderAnalyzer:
@@ -111,7 +94,7 @@ class VaderAnalyzer:
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
 
-    def evaluate(self, text, all_scores=True):
+    def evaluate(self, text):
         """
         Gives the sentiment scores for the given text using the Vader analyzer.
         :param text: Text to be scored for sentiment
@@ -122,11 +105,9 @@ class VaderAnalyzer:
         :rtype: dict
         """
         score = self.analyzer.polarity_scores(text)
-        if all_scores:
-            return {
-                'p_pos': score['pos'],
-                'p_neg': score['neg'],
-                'p_neu': score['neu'],
-                'compound': score['compound']
-            }
-        return dict(compound=score.get('compound'))
+        return {
+            'p_pos': score['pos'],
+            'p_neg': score['neg'],
+            'p_neu': score['neu'],
+            'compound': score['compound']
+        }
