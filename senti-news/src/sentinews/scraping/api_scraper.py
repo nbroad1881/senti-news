@@ -284,8 +284,8 @@ class NYT(scrapy.Spider, ArticleSource):
 
     # API is rate-limited to 4,000 requests/day and 10 requests/minute
     custom_settings = {
-        'CONCURRENT_REQUESTS': 2,
-        'DOWNLOAD_DELAY': 2
+        'CONCURRENT_REQUESTS': 10,
+        'DOWNLOAD_DELAY': 6
     }
 
     name = 'NYT'
