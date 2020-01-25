@@ -178,6 +178,7 @@ class DataBase:
         session.delete(result)
         session.commit()
         session.close()
+        self.urls.remove(url)
         return True
 
     def get_urls(self):
@@ -258,6 +259,7 @@ class DataBase:
         :rtype: NoneType
         """
         if url is not None:
+            self.urls.remove(article.url)
             article.url = url
             self.urls.add(url)
         if datetime is not None: article.datetime = datetime
