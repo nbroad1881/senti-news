@@ -14,6 +14,9 @@ from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
+from sentinews.scraping.scraping.items import NewsItem
+from sentinews.models import VaderAnalyzer, TextBlobAnalyzer, LSTMAnalyzer, analyze_title
+
 load_dotenv()
 logging.basicConfig(level=logging.DEBUG)
 
@@ -32,6 +35,14 @@ DEFAULT_UPTO_DATE = datetime.utcnow()
 CANDIDATES = ['Donald Trump', 'Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
 
 
+analyzers = [
+    VaderAnalyzer(),
+    TextBlobAnalyzer(),
+    LSTMAnalyzer(),
+]
+
+
+# todo: add newsapi into this file
 # todo: have an interactive QUERY database for text documents
 class ArticleSource(ABC):
     CANDIDATE_DICT = {
