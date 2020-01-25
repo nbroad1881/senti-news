@@ -92,8 +92,18 @@ class ArticleSource(ABC):
         # Keep track of how many articles get sent to database
         self.articles_logged = 0
         self.interactive = interactive or False
-        self.upto_date = upto_date or DEFAULT_UPTO_DATE
-        self.past_date = past_date or self.upto_date - timedelta(days=DEFAULT_NUM_DAYS_BACK)
+
+        # Check that the start_date is valid, otherwise use default.
+        if start_date and self.is_valid_date(start_date):
+            self.start_date = isoparse(start_date)
+        else:
+            self.start_date = DEFAULT_START_DATE
+
+        # Check if end_date is valid and after start_date, otherwise use default
+        if end_date and self.is_valid_date(end_date, after=self.start_date):
+            self.end_date = isoparse(end_date)
+        else:
+            self.end_date = DEFAULT_END_DATE
 
     def ask_for_query(self, *args, **kwargs):
         """
