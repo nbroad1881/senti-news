@@ -68,8 +68,6 @@ class Article(Base):
             'vader_compound': self.vader_compound,
             'textblob_p_pos': self.textblob_p_pos,
             'textblob_p_neg': self.textblob_p_neg,
-            'lstm_score': self.lstm_score,
-            'lstm_category': self.lstm_category,
             'lstm_p_neu': self.lstm_p_neu,
             'lstm_p_pos': self.lstm_p_pos,
             'lstm_p_neg': self.lstm_p_neg,
@@ -171,7 +169,7 @@ class DataBase:
         """
         session = self.get_session()
         result = self.find_row(url)
-        if result is False:
+        if result is None:
             session.close()
             return False
         session.delete(result)
@@ -216,7 +214,6 @@ class DataBase:
                        vader_compound=None,
                        textblob_p_pos=None,
                        textblob_p_neg=None,
-                       lstm_category=None,
                        lstm_p_pos=None,
                        lstm_p_neu=None,
                        lstm_p_neg=None):
@@ -311,7 +308,6 @@ class DataBase:
                                 vader_p_neu=vader_dict['p_neu'],
                                 textblob_p_neg=tb_dict['p_neg'],
                                 textblob_p_pos=tb_dict['p_pos'],
-                                lstm_category=lstm_dict['category'],
                                 lstm_p_neu=lstm_dict['p_neu'],
                                 lstm_p_pos=lstm_dict['p_pos'],
                                 lstm_p_neg=lstm_dict['p_neg'],
