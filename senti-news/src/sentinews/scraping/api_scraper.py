@@ -288,8 +288,6 @@ class NYT(scrapy.Spider, ArticleSource):
         'DOWNLOAD_DELAY': 6
     }
 
-    name = 'NYT'
-
     def __init__(self, **kwargs):
         ArticleSource.__init__(self, **kwargs)
 
@@ -342,6 +340,7 @@ class NYT(scrapy.Spider, ArticleSource):
             texts.append(paragraphs.text)
         body = ' '.join(texts)
 
+        # Filling NewsItem with important pieces of information
         item = NewsItem()
         item['url'] = info['url']
         item['datetime'] = info['datetime']
@@ -362,6 +361,7 @@ class NYT(scrapy.Spider, ArticleSource):
         """
         logging.debug(f'api_url:{api_url}')
         response = requests.get(api_url)
+        logging.debug(f"Status Code: {response.status_code}")
         if response.status_code == 200:
             start_urls = []
             info = []
@@ -370,6 +370,7 @@ class NYT(scrapy.Spider, ArticleSource):
                 date = doc['pub_date']
                 title = doc['headline']['main']
 
+                # Check to make sure the title only has one and only one name in it.
                 if self.improper_title(title):
                     continue
 
@@ -381,7 +382,7 @@ class NYT(scrapy.Spider, ArticleSource):
                 })
 
             return start_urls, info
-        logging.debug(f'Response status code:{response.status_code}')
+        # If status code is not 200, return None, None
         return None, None
 
     # todo: use fq to filter results to have name in title
@@ -406,10 +407,6 @@ class NYT(scrapy.Spider, ArticleSource):
                f'&facet_fields=document_type&fq=article' \
                f'&sort={sort}&api-key=nSc6ri8B5W6boFhjJ6SuYpQmLN8zQuV7'
 
-    def start_crawl(self, **kwargs):
-        process = CrawlerProcess()
-        process.crawl(self, **kwargs)
-
     def make_date_strings(self):
         """
         Format custom date for NYT from instance variable start and end dates
@@ -430,7 +427,7 @@ class CNN(scrapy.Spider, ArticleSource):
     RESULTS_SIZE = 1
     PAGE_LIMIT = 5
     NEWS_CO = 'CNN'
-    name = 'CNN'
+    name = 'cnn'  # spider name
 
     def __init__(self, **kwargs):
         ArticleSource.__init__(self, **kwargs)
@@ -449,15 +446,17 @@ class CNN(scrapy.Spider, ArticleSource):
         else:
             query = [quote(c) for c in CANDIDATES]
         for q in query:
-            for p in range(self.NUM_PAGES):
-                url = self.make_api_query(q, page=p)
+            for p in range(self.PAGE_LIMIT):
+                url = self.create_api_query(q, page=p)
                 yield scrapy.Request(url=url, callback=self.parse_request)
 
     def parse_request(self, response):
 
+        # Response.text is a json string
         articles = json.loads(response.text)['result']
-        for a in articles:
-            if a['type'] != 'article':
+        for article in articles:
+            # Skip over any result that is not categorized as an article
+            if article['type'] != 'article':
                 continue
 
             url = a['url']
@@ -465,6 +464,7 @@ class CNN(scrapy.Spider, ArticleSource):
             title = a['headline']
             body = a['body']
 
+            # Check if title has one and only one candidate name
             if self.improper_title(title):
                 continue
 
@@ -473,28 +473,22 @@ class CNN(scrapy.Spider, ArticleSource):
             if not (self.past_date < article_datetime < self.upto_date):
                 continue
 
+            # Add information to NewsItem
             item = NewsItem()
             item['url'] = url
             item['datetime'] = date_time
             item['title'] = title
             item['news_co'] = self.NEWS_CO
-            item['text'] = body
+            item['text'] = text
+
+            # Send item to the NewsItemPipeline
             yield item
 
-    def make_api_call(self, api_url):
+    def make_api_call(self):
         """
-        Calls CNN API and returns the number of results.
-        Using requests library would be sufficient, but for
-        consistency Scrapy will be used.
-        :param api_url:
-        :return:
+        Unneeded in CNN. API call done by scrapy as start_requests give the item to parse_request
         """
-        response = requests.get(api_url)
-        if response.status_code == 200:
-            logging.debug('Request accepted (200)')
-            return json.loads(response.text)['meta']['of']
-        else:
-            logging.debug(f'Request denied ({response.status_code})')
+        pass
 
     def create_api_query(self, query, page):
         """
@@ -535,7 +529,7 @@ class FOX(scrapy.Spider, ArticleSource):
     # PAGE_LIMIT = 10
 
     NEWS_CO = 'Fox News'
-    name = 'Fox'
+    name = 'fox'  # spider name
 
     def __init__(self, **kwargs):
         ArticleSource.__init__(self, **kwargs)
@@ -553,11 +547,19 @@ class FOX(scrapy.Spider, ArticleSource):
 
         all_urls, all_info = [], []
         for q in query:
+
+            # each result is numbered.
+            # The number of pages * the number of results on a page is the number of the last article
             for start in range(0,
-                               self.PAGE_SIZE * self.NUM_PAGES,
+                               self.PAGE_SIZE * self.PAGE_LIMIT,
                                self.PAGE_SIZE):
-                api_url = self.make_api_query(q, start=start)
+
+                api_url = self.create_api_query(q, start=start)
                 urls, info = self.make_api_call(api_url)
+
+                # Check if api call failed
+                if urls is None:
+                    continue
 
                 all_urls.extend(urls)
                 all_info.extend(info)
@@ -591,6 +593,7 @@ class FOX(scrapy.Spider, ArticleSource):
         item['title'] = info['title']
         item['news_co'] = self.NEWS_CO
         item['text'] = body
+        # Send to pipeline
         yield item
 
     def make_api_call(self, api_url):
@@ -606,6 +609,8 @@ class FOX(scrapy.Spider, ArticleSource):
         if response.status_code == 200:
             urls, infos = [], []
 
+            # Format of response has an angular callback at beginning.
+            # By slice the string this way, it turns into a json string
             text = json.loads(response.text[21:-1])['response']
             for d in text['docs']:
                 info = {
@@ -613,6 +618,7 @@ class FOX(scrapy.Spider, ArticleSource):
                     'title': d['title'],
                     'url': d['url'][0],
                 }
+
                 if self.improper_title(info['title']):
                     continue
 
