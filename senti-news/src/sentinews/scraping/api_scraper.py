@@ -276,7 +276,13 @@ class NYT(scrapy.Spider, ArticleSource):
     Class designed to pull information from The New York Times' API.
     https://developer.nytimes.com/docs/articlesearch-product/1/overview
 
-    # todo: handle rate
+    """
+    NEWS_CO = 'The New York Times'  # news company name
+    name = 'nyt'  # spider name
+    # todo: change back to 5
+    PAGE_LIMIT = 1
+
+    # API is rate-limited to 4,000 requests/day and 10 requests/minute
     custom_settings = {
         'CONCURRENT_REQUESTS': 2,
         'DOWNLOAD_DELAY': 2
