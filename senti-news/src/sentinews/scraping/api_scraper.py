@@ -1,14 +1,15 @@
 import logging
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
 import os
 from urllib.parse import quote
+from requests import Request
+from newsapi import NewsApiClient
 
 from dotenv import load_dotenv
 import scrapy
-from sentinews.scraping.scraping.items import NewsItem
 import requests
 from bs4 import BeautifulSoup
 from scrapy.crawler import CrawlerProcess
@@ -19,7 +20,6 @@ from sentinews.models import VaderAnalyzer, TextBlobAnalyzer, LSTMAnalyzer, anal
 
 load_dotenv()
 logging.basicConfig(level=logging.DEBUG)
-
 
 """
 api_scraper.py contains 1 abstract ArticleSource and 3 subclasses: NYT, CNN, FOX
@@ -265,10 +265,11 @@ class ArticleSource(ABC):
         """
         pass
 
-    @staticmethod
-    def improper_title(title):
-        names = ['trump', 'biden', 'warren', 'sanders', 'harris', 'buttigieg']
-        return sum([1 if name in title.lower() else 0 for name in names]) != 1
+    def post_article_to_db(self, article_info, scores):
+        api_url = 'http://0.0.0.0:5000/article/'
+        payload = {**article_info, **scores}
+        response = requests.post(api_url, params=payload)
+        logging.info(f"Made POST request to database API, response code: {response.status_code}")
 
 
 class NYT(scrapy.Spider, ArticleSource):
@@ -459,18 +460,18 @@ class CNN(scrapy.Spider, ArticleSource):
             if article['type'] != 'article':
                 continue
 
-            url = a['url']
-            date_time = a['firstPublishDate']
-            title = a['headline']
-            body = a['body']
+            # Pull information from article
+            url = article['url']
+            date_time = isoparse(article['firstPublishDate'])
+            title = article['headline']
+            text = article['body']
 
             # Check if title has one and only one candidate name
             if self.improper_title(title):
                 continue
 
-            article_datetime = isoparse(date_time)
-
-            if not (self.past_date < article_datetime < self.upto_date):
+            # Make sure the article is published in the proper time window
+            if not (self.start_date < date_time < self.end_date):
                 continue
 
             # Add information to NewsItem
@@ -625,8 +626,6 @@ class FOX(scrapy.Spider, ArticleSource):
                 urls.append(info['url'])
                 infos.append(info)
             return urls, infos
-        else:
-            return None
 
         # API call failed
         logging.debug(f"Request failed. {response.status_code}")
@@ -659,8 +658,15 @@ def start_process(spider, **kwargs):
 
 
 def get_recent_articles():
-    settings_file_path = 'scraping.settings'  # The path seen from root, ie. from main.py
+    """
+    Uses all 3 spiders to crawl through recent articles.
+    Default time span is
+    :return:
+    :rtype:
+    """
+    settings_file_path = 'scraping.scraping.settings'
     os.environ.setdefault('SCRAPY_SETTINGS_MODULE', settings_file_path)
+    # del os.environ['SCRAPY_SETTINGS_MODULE']
     process = CrawlerProcess(get_project_settings())
     process.crawl(NYT, interactive=False)
     process.crawl(CNN, interactive=False)
@@ -669,16 +675,30 @@ def get_recent_articles():
 
 
 if __name__ == "__main__":
+    import sys
+
     choice = input("Which news company would you like to scrape?\n"
                    "1. NYTimes\n"
                    "2. CNN\n"
                    "3. Fox News\n"
-                   "4. (in future) Debug Mode\n")
+                   "4. All recent articles\n"
+                   "5. NEWSAPI\n")
+
     if choice == '1':
-        start_process(NYT, interactive=True)
+        spider = NYT
     elif choice == '2':
-        start_process(CNN, interactive=True)
+        spider = CNN
     elif choice == '3':
-        start_process(FOX, interactive=True)
+        spider = FOX
+    elif choice == '4':
+        get_recent_articles()
+        sys.exit(0)
+    elif choice == '5':
+        napi = NEWSAPI2(interactive=False)
+        napi.start_requests()
+        sys.exit(0)
     else:
-        pass
+        sys.exit(0)
+    process = CrawlerProcess()
+    process.crawl(spider, interactive=True)
+    process.start()
