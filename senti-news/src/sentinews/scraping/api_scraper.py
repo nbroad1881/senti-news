@@ -307,11 +307,15 @@ class NYT(scrapy.Spider, ArticleSource):
             query = self.ask_for_query()
         else:
             query = [quote(c) for c in CANDIDATES]
+
+        # Loop through candidates
         for q in query:
-            for p in range(5):
-                api_url = self.make_api_query(query=q, page=p)
+            # Loop through pages up to limit
+            for p in range(self.PAGE_LIMIT):
+                api_url = self.create_api_query(query=q, page=p)
                 urls, info = self.make_api_call(api_url)
 
+                # May return None if failed
                 if urls is not None:
                     all_urls.extend(urls)
                     all_info.extend(info)
