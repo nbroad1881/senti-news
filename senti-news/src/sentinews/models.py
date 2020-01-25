@@ -47,6 +47,8 @@ class LSTMAnalyzer:
         except BaseException as e:
             logging.info("Failed to load LSTM model. " + str(e))
 
+        self.name = 'lstm'
+
     def evaluate(self, text):
         """
         Gives the sentiment scores for the given text.
@@ -70,6 +72,7 @@ class TextBlobAnalyzer:
 
     def __init__(self):
         self.nb = NaiveBayesAnalyzer()
+        self.name = 'textblob'
 
     def evaluate(self, text):
         """
@@ -82,8 +85,10 @@ class TextBlobAnalyzer:
         """
 
         sentiment = TextBlob(text, analyzer=self.nb).sentiment
-        return dict(p_pos=round(sentiment.p_pos, 3),
-                    p_neg=round(sentiment.p_neg, 3))
+        return {
+            'p_pos': round(sentiment.p_pos, 3),
+            'p_neg': round(sentiment.p_neg, 3)
+        }
 
 
 class VaderAnalyzer:
@@ -93,6 +98,7 @@ class VaderAnalyzer:
 
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
+        self.name = 'vader'
 
     def evaluate(self, text):
         """
@@ -111,3 +117,23 @@ class VaderAnalyzer:
             'p_neu': score['neu'],
             'compound': score['compound']
         }
+
+
+def analyze_title(analyzer_iter, text):
+    """
+    Pass an iterable of analyzers to have each evaluate the passed text.
+    Returns the scores in a dict of dicts
+    :param text: text to get sentiment from
+    :type text: str
+    :param analyzer_iter: initialized Vader/TextBlob/LSTM Analyzer
+    :type analyzer_iter: VaderAnalyzer, TextBlobAnalyzer, LSTMAnalyzer
+    :return: dictionary of dictionaries. Each sub-dictionary is a dictionary
+    from each analyzer's evaluate() method.
+    :rtype: dict
+    """
+    all_scores = {}
+    for func in analyzer_iter:
+        scores = func.evaluate(text)
+        for key in scores:
+            all_scores[func.name + '_' + key] = scores[key]
+    return all_scores
