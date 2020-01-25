@@ -28,7 +28,6 @@ class NewsItemPipeline:
         pass
 
     def close_spider(self, spider):
-        self.db.close_session()
         logging.info(f"Logged {spider.articles_logged} articles")
 
     @classmethod
@@ -36,7 +35,7 @@ class NewsItemPipeline:
         return cls()
 
     def process_item(self, item, spider):
-        result = self.db.add_row(
+        result = self.db.add_article_info(
             url=item['url'],
             datetime=item['datetime'],
             title=item['title'],
