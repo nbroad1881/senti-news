@@ -57,6 +57,12 @@ analyzers = [
 # todo: add newsapi into this file
 # todo: have an interactive QUERY database for text documents
 class ArticleSource(ABC):
+    """
+    Base abstract class that to be subclassed with specialized spiders.
+    Includes implementation for methods used by all subclasses.
+    """
+
+    # For selecting the candidate based on the number input
     CANDIDATE_DICT = {
         TRUMP_OPTION: 'Donald Trump',
         BIDEN_OPTION: 'Joe Biden',
@@ -67,13 +73,43 @@ class ArticleSource(ABC):
         ALL_CANDIDATES: ''
     }
 
-    def __init__(self, interactive, past_date=None, upto_date=None):
+    def __init__(self, interactive, start_date=None, end_date=None):
+        """
+        When creating an ArticleSource object, there is a choice between making the process
+        interactive. Interactive means that the user will be prompted to input options to
+        choose things like candidate, date, news source.
+        :param interactive: set to True or False depending on if interactivity is desired
+        :type interactive: bool
+        :param start_date: When limiting results by date, this is the date that occurred the longer time ago.
+        Format should be YYYYMMDD
+        :type start_date: str
+        :param end_date: This is the date that occurred more recently to today. Format YYYMMDD
+        :type end_date: str
+        
+        Time periods go from (PAST) start_date -> end_date (PRESENT)
+        """
+
+        # Keep track of how many articles get sent to database
         self.articles_logged = 0
         self.interactive = interactive or False
         self.upto_date = upto_date or DEFAULT_UPTO_DATE
         self.past_date = past_date or self.upto_date - timedelta(days=DEFAULT_NUM_DAYS_BACK)
 
     def ask_for_query(self, *args, **kwargs):
+        """
+        Combines asking which candidate, a start date and an end date.
+        Start and end date get stored as instance variables.
+        Will keep asking until user enters valid input.
+        :param args:
+        :type args:
+        :param kwargs:
+        :type kwargs:
+        :return:
+        :rtype:
+        """
+
+        # options starts as the number selected by user, but then when a valid section is selected,
+        # it becomes the name of the candidate.
         option = self.ask_for_candidate()
         while option not in self.CANDIDATE_DICT:
             print('Not valid selection. Try again.')
@@ -95,34 +131,120 @@ class ArticleSource(ABC):
 
     @staticmethod
     def ask_for_candidate():
+        """
+        Asks user to input a number to select one or all candidates.
+        :return: user input
+        :rtype: str
+        """
         return input("Which candidate?\n"
-                     "1. Donald Trump\n"
-                     "2. Joe Biden\n"
-                     "3. Elizabeth Warren\n"
-                     "4. Bernie Sanders\n"
-                     "5. Kamala Harris\n"
-                     "6. Pete Buttigieg\n"
-                     "7. All candidates\n")
+                     f"{TRUMP_OPTION}. Donald Trump\n"
+                     f"{BIDEN_OPTION}. Joe Biden\n"
+                     f"{WARREN_OPTION}. Elizabeth Warren\n"
+                     f"{SANDERS_OPTION}. Bernie Sanders\n"
+                     f"{HARRIS_OPTION}. Kamala Harris\n"
+                     f"{BUTTIGIEG_OPTION}. Pete Buttigieg\n"
+                     f"{ALL_CANDIDATES}. All candidates\n")
 
     @staticmethod
-    def ask_for_date(past=False):
-        time_word = 'past' if past else 'most recent'
-        return input(f'What is the {time_word} date? (YYYYMMDD): ')
+    def ask_for_date(choice):
+        """
+        Asks user to enter a date. Can ask for start or end date.
+        :param choice: START_DATE or END_DATE
+        :type choice: use constants
+        :return: user input
+        :rtype: str
+        """
+        if choice == START_DATE:
+            time_word = 'start'
+            explanation_word = 'further from'
+        elif choice == END_DATE:
+            time_word = 'end'
+            explanation_word = 'closer to'
+        return input(f'What is the {time_word} date, the date that is {explanation_word} today)? '
+                     f'\n (YYYYMMDD): ')
 
     @staticmethod
-    def is_valid_date(date_string):
-        return isinstance(date_string, str) and len(date_string) == 8 and date_string.isdigit()
+    def improper_title(title):
+        """
+        Checks if the 'title'
+        :param title:
+        :type title:
+        :return:
+        :rtype:
+        """
+        names = ['trump', 'biden', 'warren', 'sanders', 'harris', 'buttigieg']
+        return sum([1 if name in title.lower() else 0 for name in names]) != 1
+
+    @staticmethod
+    def is_valid_date(date_string, after=None):
+        """
+        Checks if the date_string can be parsed by isoparse() and if the date is not in the future.
+        Prints errors if date_string produces ValueError or TypeError
+        :param after: if used, the date of the date_string must come after the date passed
+        :type after: datetime.datetime
+        :param date_string: Date to be checked. Needs to be in ISO format
+        :type date_string: str
+        :return: True if date_string is able to be parsed and date not in future.
+        :rtype: bool
+        """
+
+        try:
+            datetime_ = isoparse(date_string)
+        except ValueError as error:
+            print(error)
+            return False
+        except TypeError as error:
+            print(error)
+            return False
+
+        # To make sure the passed date_string is after the passed date.
+        if after:
+            if datetime.utcnow() > datetime_ > after:
+                return True
+            logging.info(f"{date_string} is not in correct time range")
+            return False
+
+        return True
 
     @abstractmethod
-    def make_api_query(self, *args, **kwargs):
+    def create_api_query(self, *args, **kwargs):
+        """
+        This creates the query that will be used in make_api_call.
+        :param args:
+        :type args:
+        :param kwargs:
+        :type kwargs:
+        :return:
+        :rtype:
+        """
         pass
 
     @abstractmethod
     def make_api_call(self, *args, **kwargs):
+        """
+        Call the API using to get article information such as title or url.
+        :param args:
+        :type args:
+        :param kwargs:
+        :type kwargs:
+        :return:
+        :rtype:
+        """
         pass
 
     @abstractmethod
-    def make_date_strings(self):
+    def make_date_strings(self, *args, **kwargs):
+        """
+        Each API uses a different date string format.
+        This formats the instance variables self.start_date and self.end_date
+        to the appropriate string.
+        :param args:
+        :type args:
+        :param kwargs:
+        :type kwargs:
+        :return: date string
+        :rtype: str
+        """
         pass
 
     @staticmethod
@@ -132,7 +254,9 @@ class ArticleSource(ABC):
 
 
 class NYT(scrapy.Spider, ArticleSource):
-    NEWS_CO = 'The New York Times'
+    """
+    Class designed to pull information from The New York Times' API.
+    https://developer.nytimes.com/docs/articlesearch-product/1/overview
 
     # todo: handle rate
     custom_settings = {
@@ -146,6 +270,13 @@ class NYT(scrapy.Spider, ArticleSource):
         ArticleSource.__init__(self, **kwargs)
 
     def start_requests(self):
+        """
+        Over-riding scrapy.Spider's method. Called after starting process.crawl()
+        Makes multiple queries for each candidate, going through several pages of results.
+        The url and article information is passed to the parse_request function
+        :return: yield results to callback method
+        :rtype: scrapy.Request
+        """
         all_urls = []
         all_info = []
         if self.interactive:
@@ -165,7 +296,17 @@ class NYT(scrapy.Spider, ArticleSource):
             yield scrapy.Request(url=url, callback=self.parse_request, cb_kwargs=dict(info=info))
 
     def parse_request(self, response, info):
-        # todo: check for bad responses
+        """
+        Use BeautifulSoup to pull text content from response and put all information in a NewsItem.
+        Yielding the NewsItem sends it to the NewsItemPipeline.
+        The pipeline processes and adds it to the database
+        :param response: response object from start_requests
+        :type response: scrapy.http.response.html.HtmlResponse
+        :param info: information such as url, datetime, title for start_requests
+        :type info: dict
+        :return: item with all article information to the pipeline
+        :rtype: sentinews.scraping.scraping.items.NewsItem
+        """
 
         soup = BeautifulSoup(response.text, 'html.parser')
         texts = []
@@ -182,6 +323,15 @@ class NYT(scrapy.Spider, ArticleSource):
         yield item
 
     def make_api_call(self, api_url):
+        """
+        Calls the api_url passed to it and returns information if successful.
+        Checks for good status code.
+        The API contains url, title and date information
+        :param api_url: The API's url to call
+        :type api_url: str
+        :return: list of starting urls for start_requests() and a list of dictionaries of url, title, and date
+        :rtype: list, list or None, None if call failed
+        """
         logging.debug(f'api_url:{api_url}')
         response = requests.get(api_url)
         if response.status_code == 200:
@@ -208,7 +358,20 @@ class NYT(scrapy.Spider, ArticleSource):
 
     # todo: use fq to filter results to have name in title
     # https://developer.nytimes.com/docs/articlesearch-product/1/overview
-    def make_api_query(self, query, page, sort='newest'):
+    def create_api_query(self, query, page, sort='newest'):
+        """
+        Since the url is a very long string, most of it the exact same for each request,
+         this method makes it easier to create the api url.
+        :param query: candidate to search for
+        :type query: str
+        :param page: which page number to start on
+        :type page: str or int
+        :param sort: how to sort results: newest or relevance
+        :type sort: str
+        :return: the whole api url to be called
+        :rtype: str
+        """
+        # Turn datetime objects to correct string representation
         begin_date, end_date = self.make_date_strings()
         return f'https://api.nytimes.com/svc/search/v2/articlesearch.json?q={query}' \
                f'&facet=true&page={page}&begin_date={begin_date}&end_date={end_date}' \
@@ -220,12 +383,24 @@ class NYT(scrapy.Spider, ArticleSource):
         process.crawl(self, **kwargs)
 
     def make_date_strings(self):
-        return self.past_date.strftime('%Y%m%d'), self.upto_date.strftime('%Y%m%d')
+        """
+        Format custom date for NYT from instance variable start and end dates
+        e.g. 20200101
+        :return: date string
+        :rtype: str
+        """
+        return self.start_date.strftime('%Y%m%d'), self.end_date.strftime('%Y%m%d')
 
 
 class CNN(scrapy.Spider, ArticleSource):
-    RESULTS_SIZE = 100
-    NUM_PAGES = 5
+    """
+    Class designed to pull information from CNN's API.
+    Scrapy not necessarily needed because CNN gives everything in the API request.
+    Scrapy used for consistency and pipelining.
+    """
+    # todo: change back to 100
+    RESULTS_SIZE = 1
+    PAGE_LIMIT = 5
     NEWS_CO = 'CNN'
     name = 'CNN'
 
@@ -233,7 +408,14 @@ class CNN(scrapy.Spider, ArticleSource):
         ArticleSource.__init__(self, **kwargs)
 
     def start_requests(self):
-
+        """
+        Ask user for query or use all candidates.
+        Because CNN essentially gives all the information after the first api call,
+        the scrapy.Request is not necessary. However, using parse_requests allows
+        for the NewsItemPipeline to be used.
+        :return: yield a page of results from the api call
+        :rtype: scrapy.Request
+        """
         if self.interactive:
             query = self.ask_for_query()
         else:
@@ -286,18 +468,43 @@ class CNN(scrapy.Spider, ArticleSource):
         else:
             logging.debug(f'Request denied ({response.status_code})')
 
-    def make_api_query(self, query, page):
+    def create_api_query(self, query, page):
+        """
+        Returns string that will be called by the API
+        :param query: candidate
+        :type query: str
+        :param page: page to start on
+        :type page: str or int
+        :return: query string
+        :rtype: str
+        """
         return f'https://search.api.cnn.io/content?size={self.RESULTS_SIZE}' \
                f'&q={query}&type=article&sort=newest&page={page}' \
                f'&from={str(page * self.RESULTS_SIZE)}'
 
     def make_date_strings(self):
-        return self.past_date.isoformat() + 'Z', self.upto_date.isoformat() + 'Z'
+        """
+        Format custom date for CNN from instance variable start and end dates
+        e.g. 2020-01-01T13:25:46.947Z
+        :return: date string
+        :rtype: str
+        """
+        return self.start_date.isoformat() + 'Z', self.end_date.isoformat() + 'Z'
 
 
 class FOX(scrapy.Spider, ArticleSource):
-    PAGE_SIZE = 10
-    NUM_PAGES = 10
+    """"
+    Class designed to pull information from Fox News' API.
+    Queries the API with one or all candidates, extracts the
+    url, title, datetime, and text and sends it to NewsItemPipeline.
+    """
+    # Number of results on a page
+    # todo: change back to 10
+    PAGE_SIZE = 1
+    # PAGE_SIZE = 10
+    # Number of pages to go through
+    PAGE_LIMIT = 1
+    # PAGE_LIMIT = 10
 
     NEWS_CO = 'Fox News'
     name = 'Fox'
@@ -306,6 +513,11 @@ class FOX(scrapy.Spider, ArticleSource):
         ArticleSource.__init__(self, **kwargs)
 
     def start_requests(self):
+        """
+        Call the API multiple times and pass results to parse_request
+        :return:
+        :rtype:
+        """
         if self.interactive:
             query = self.ask_for_query()
         else:
@@ -326,7 +538,16 @@ class FOX(scrapy.Spider, ArticleSource):
             yield scrapy.Request(url=url, callback=self.parse_request, cb_kwargs=dict(info=info))
 
     def parse_request(self, response, info):
-
+        """
+        Use BeautifulSoup to pull text from the article.
+        Put information in NewsItem, yield to NewsItemPipeline
+        :param response: response api call from start_requests
+        :type response: scrapy.http.response.html.HtmlResponse
+        :param info: url, title, date of the article
+        :type info: dict
+        :return: yield NewsItem to NewsItemPipeline
+        :rtype: sentinews.scraping.scraping.items.NewsItem
+        """
         soup = BeautifulSoup(response.text, 'html.parser')
         paragraphs = soup.select('div.article-body p')
         texts = []
@@ -346,12 +567,12 @@ class FOX(scrapy.Spider, ArticleSource):
 
     def make_api_call(self, api_url):
         """
-        Calls FOX API .
-        Using the requests library would be sufficient, but for
-        consistency Scrapy will be used. Requests used once to get
-        the urls and info.
-        :param api_url:
-        :return:
+        Calls Fox News  API. This call will return a json response
+        that will be parsed to extract url, datetime, and title information.
+        If the call fails, returns None, None
+        :param api_url: query from create_api_query()
+        :return: lists of urls and info dicts or None, None
+        :rtype: list, list of dict or None, None
         """
         response = requests.get(api_url)
         if response.status_code == 200:
@@ -373,7 +594,20 @@ class FOX(scrapy.Spider, ArticleSource):
         else:
             return None
 
-    def make_api_query(self, query, start):
+        # API call failed
+        logging.debug(f"Request failed. {response.status_code}")
+        return None, None
+
+    def create_api_query(self, query, start):
+        """
+        Create string to be sent as a query to the API.
+        :param query: candidate
+        :type query: str
+        :param start: the number of the article to start on
+        :type start: str or int
+        :return: query string
+        :rtype: str
+        """
         min_date, max_date = self.make_date_strings()
         return f'https://api.foxnews.com/v1/content/search?q={query}' \
                f'&fields=date,description,title,url,image,type,taxonomy' \
