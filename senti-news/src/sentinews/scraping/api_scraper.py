@@ -31,7 +31,19 @@ NewsItemPipeline will then send the result to the database
 """
 
 DEFAULT_NUM_DAYS_BACK = 7
-DEFAULT_UPTO_DATE = datetime.utcnow()
+DEFAULT_END_DATE = datetime.now(timezone.utc)
+DEFAULT_START_DATE = DEFAULT_END_DATE - timedelta(days=DEFAULT_NUM_DAYS_BACK)
+START_DATE = 1
+END_DATE = 2
+
+TRUMP_OPTION = '1'
+BIDEN_OPTION = '2'
+WARREN_OPTION = '3'
+SANDERS_OPTION = '4'
+HARRIS_OPTION = '5'
+BUTTIGIEG_OPTION = '6'
+ALL_CANDIDATES = '7'
+
 CANDIDATES = ['Donald Trump', 'Joe Biden', 'Bernie Sanders', 'Elizabeth Warren', 'Kamala Harris', 'Pete Buttigieg']
 
 
@@ -46,13 +58,13 @@ analyzers = [
 # todo: have an interactive QUERY database for text documents
 class ArticleSource(ABC):
     CANDIDATE_DICT = {
-        '1': 'Donald Trump',
-        '2': 'Joe Biden',
-        '3': 'Elizabeth Warren',
-        '4': 'Bernie Sanders',
-        '5': 'Kamala Harris',
-        '6': 'Pete Buttigieg',
-        '7': ''
+        TRUMP_OPTION: 'Donald Trump',
+        BIDEN_OPTION: 'Joe Biden',
+        WARREN_OPTION: 'Elizabeth Warren',
+        SANDERS_OPTION: 'Bernie Sanders',
+        HARRIS_OPTION: 'Kamala Harris',
+        BUTTIGIEG_OPTION: 'Pete Buttigieg',
+        ALL_CANDIDATES: ''
     }
 
     def __init__(self, interactive, past_date=None, upto_date=None):
