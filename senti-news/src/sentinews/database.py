@@ -121,17 +121,16 @@ class DataBase:
 
     def find_row(self, url):
         """
-        True if url in database, False if not.
-        Query comes back None if it can't find the url.
+        Returns result if found, otherwise None
         :param url: url to be checked if it is the database
         :type url: str
-        :return: search result if found, False if not found.
-        :rtype: sentinews.database.Article
+        :return: search result if found, None if not found.
+        :rtype: sentinews.database.Article or None
         """
         session = self.get_session()
-        result = session.query(Article).filter(Article.url == url).first() or False
+        result = session.query(Article).filter(Article.url == url).first()
         session.close()
-        return result or False
+        return result
 
     def add_article_info(self, url, datetime, title, news_co, text=''):
         """
