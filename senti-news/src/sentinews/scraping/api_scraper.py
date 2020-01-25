@@ -657,103 +657,6 @@ class FOX(scrapy.Spider, ArticleSource):
         return self.start_date.strftime('%Y-%m-%d'), self.end_date.strftime('%Y-%m-%d')
 
 
-class NEWSAPI(scrapy.Spider, ArticleSource):
-    AUTH_HEADERS = {"Content-Type": "Application/JSON",
-                    "Authorization": os.environ['NEWS_API_KEY2']}
-
-    LAST_NAMES = ['TRUMP', 'BIDEN', 'SANDERS', 'WARREN', 'HARRIS', 'BUTTIGIEG']
-    QUERY = '(' + ') OR ('.join(LAST_NAMES) + ')'
-    PAGE_SIZE = 100
-
-    NUM_REQUESTS = 50  # Maximum number of queries is 500
-    MAX_DAYS_BACK = 30
-    EVERYTHING_URL = "https://newsapi.org/v2/everything"
-
-    SOURCES = ','.join(['cnn', 'fox-news', 'the-new-york-times'])
-    ALL_SOURCES = ['abc-news', "al-jazeera-english", "australian-financial-review", 'associated-press', "axios",
-                   'bbc-news', "bloomberg", "breitbart-news", "business-insider", "business-insider-uk", "buzzfeed",
-                   'cbc-news', 'cnbc', 'cnn', "entertainment-weekly", "financial-post", "fortune", 'fox-news',
-                   "independent", "mashable", "medical-news-today", 'msnbc', 'nbc-news', "national-geographic",
-                   "national-review", "new-scientist", "news-com-au", "new-york-magazine", "next-big-future",
-                   "nfl-news", "the-globe-and-mail", "the-irish-times", "the-jerusalem-post", "the-lad-bible",
-                   "the-times-of-india", "the-verge", "wired", 'newsweek', 'politico', 'reuters', 'the-hill',
-                   "the-hindu", 'the-american-conservative', 'the-huffington-post', "the-new-york-times",
-                   'the-wall-street-journal', 'the-washington-post', 'the-washington-times', 'time', 'usa-today',
-                   'vice-news']
-
-    def __init__(self, **kwargs):
-        ArticleSource.__init__(self, **kwargs)
-        # How far back to look
-        if (DEFAULT_END_DATE - self.start_date) > timedelta(days=self.MAX_DAYS_BACK):
-            logging.info("Can only look 30 days back from today.")
-            self.start_date = datetime.now(timezone.utc) - timedelta(self.MAX_DAYS_BACK)
-        self.amount_of_time = self.end_date - self.start_date
-
-    def start_requests(self):
-
-        urls = []
-        for i in range(self.NUM_REQUESTS):
-            time_division = self.amount_of_time / self.NUM_REQUESTS
-            self.end_date = self.start_date + time_division
-            if self.end_date > DEFAULT_END_DATE:
-                self.end_date = DEFAULT_END_DATE
-            payload = self.create_api_query(q=self.QUERY,
-                                            page=1,
-                                            page_size=self.PAGE_SIZE,
-                                            qintitle=self.QUERY)
-            urls.append(Request('GET',
-                                self.EVERYTHING_URL,
-                                params=payload).prepare().url)
-            self.start_date += time_division
-            self.end_date += time_division
-
-        for url in urls:
-            yield scrapy.Request(url=url, headers=self.AUTH_HEADERS, callback=self.parse_request)
-
-    def parse_request(self, response):
-        result = json.loads(response.text)
-        if result['status'] == 'ok':
-            for article in result['articles']:
-                if self.improper_title(article['title']):
-                    continue
-                item = NewsItem()
-                try:
-                    item['url'] = article['url']
-                    item['datetime'] = isoparse(article['publishedAt'])
-                    item['title'] = article['title']
-                    item['news_co'] = article['source'].get('name')
-                    item['text'] = article['content']
-                except KeyError as e:
-                    logging.info(f"Article key error: {article['url']}")
-                    continue
-                itemproc = self.crawler.engine.scraper.itemproc
-                itemproc.process_item(item, self)
-        else:
-            logging.info(f"Invalid response: {result['status']}")
-
-    def create_api_query(self, q, page, page_size, qintitle):
-        from_param, to_param = self.make_date_strings()
-        payload = {
-            'q': q,
-            'qintitle': qintitle,
-            'from': from_param,
-            'to': to_param,
-            'pageSize': page_size,
-            'page': page,
-            'sources': self.SOURCES,
-            'language': 'en',
-            'sortBy': 'relevancy',
-        }
-        return payload
-
-    def make_api_call(self):
-        pass
-
-    def make_date_strings(self, *args, **kwargs):
-        str_format = "%Y-%m-%dT%H:%M:%S"
-        return datetime.strftime(self.start_date, str_format), datetime.strftime(self.end_date, str_format)
-
-
 class NEWSAPI2(scrapy.Spider, ArticleSource):
 
     news_api = NewsApiClient(api_key=os.environ.get('NEWS_API_KEY2'))
@@ -810,12 +713,43 @@ class NEWSAPI2(scrapy.Spider, ArticleSource):
                 if self.improper_title(article['title']):
                     continue
 
+                try:
+                    article_info = {
+                        'url': article['url'],
+                        'datetime': isoparse(article['publishedAt']),
+                        'title': article['title'],
+                        'news_co': article['source'].get('name'),
+                        'text': article['content'],
+                    }
+                except KeyError as e:
+                    logging.info(f"Article key error({e}): {article['url']}")
+                    continue
+                scores = analyze_title(analyzers, article_info['title'])
+                self.post_article_to_db(article_info=article_info, scores=scores)
 
-def start_process(spider, **kwargs):
-    process = CrawlerProcess()
-    process.crawl(spider, **kwargs)
-    process.start()
+        logging.info(f"Invalid response from NewsAPI: {result['status']}")
 
+    def create_api_query(self, q, page, page_size, qintitle):
+        from_param, to_param = self.make_date_strings()
+        payload = {
+            'q': q,
+            'qintitle': qintitle,
+            'from': from_param,
+            'to': to_param,
+            'pageSize': page_size,
+            'page': page,
+            'sources': self.SOURCES,
+            'language': 'en',
+            'sortBy': 'relevancy',
+        }
+        return payload
+
+    def make_api_call(self):
+        pass
+
+    def make_date_strings(self, *args, **kwargs):
+        str_format = "%Y-%m-%dT%H:%M:%S"
+        return datetime.strftime(self.start_date, str_format), datetime.strftime(self.end_date, str_format)
 
 def get_recent_articles():
     """
