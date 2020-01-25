@@ -124,19 +124,27 @@ class ArticleSource(ABC):
         while option not in self.CANDIDATE_DICT:
             print('Not valid selection. Try again.')
             option = self.ask_for_candidate()
-        input_past_date = self.ask_for_date(past=True)
-        while not self.is_valid_date(input_past_date):
-            print('Not valid date. Try again.')
-        input_upto_date = self.ask_for_date(past=False)
-        while not self.is_valid_date(input_upto_date):
-            print('Not valid date. Try again.')
-            input_upto_date = self.ask_for_date(past=False)
-        self.past_date = input_past_date
-        self.upto_date = input_upto_date
 
-        if option == '7':
+        # Asking for start date
+        input_start_date = self.ask_for_date(START_DATE)
+        while not self.is_valid_date(input_start_date):
+            print('Not valid date. Try again.')
+            input_start_date = self.ask_for_date(START_DATE)
+        self.start_date = isoparse(input_start_date)
+
+        # Asking for end date
+        input_end_date = self.ask_for_date(END_DATE)
+        while not self.is_valid_date(input_end_date, after=self.start_date):
+            print('Not valid date. Try again.')
+            input_end_date = self.ask_for_date(END_DATE)
+        self.end_date = isoparse(input_end_date)
+
+        # If they selected all candidates
+        if option == ALL_CANDIDATES:
+            # quote uses urllib to change spaces and other invalid characters to %xx
             return [quote(c) for c in CANDIDATES]
 
+        # Return a list of a single candidate
         return [quote(self.CANDIDATE_DICT[option])]
 
     @staticmethod
