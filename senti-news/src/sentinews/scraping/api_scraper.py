@@ -207,12 +207,16 @@ class ArticleSource(ABC):
         """
 
         try:
-            datetime_ = isoparse(date_string)
+            datetime_ = isoparse(date_string).replace(tzinfo=timezone.utc)
         except ValueError as error:
             print(error)
             return False
         except TypeError as error:
             print(error)
+            return False
+
+        # If date is in the future
+        if datetime_ > datetime.now(tz=timezone.utc):
             return False
 
         # To make sure the passed date_string is after the passed date.
@@ -657,7 +661,7 @@ class FOX(scrapy.Spider, ArticleSource):
         return self.start_date.strftime('%Y-%m-%d'), self.end_date.strftime('%Y-%m-%d')
 
 
-class NEWSAPI2(scrapy.Spider, ArticleSource):
+class NEWSAPI(ArticleSource):
 
     news_api = NewsApiClient(api_key=os.environ.get('NEWS_API_KEY2'))
 
@@ -788,7 +792,7 @@ if __name__ == "__main__":
         get_recent_articles()
         sys.exit(0)
     elif choice == '5':
-        napi = NEWSAPI2(interactive=False)
+        napi = NEWSAPI(interactive=False)
         napi.start_requests()
         sys.exit(0)
     else:
