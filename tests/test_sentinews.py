@@ -2,16 +2,18 @@
 Tests to make sure functionality of database.py is working.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
 import re
 
+from dateutil.parser import isoparse
 import pytest
 from dotenv import load_dotenv
 from sqlalchemy.orm.session import Session
 
 from sentinews.database import Article, DataBase
 from sentinews.models import TextBlobAnalyzer, VaderAnalyzer, LSTMAnalyzer
+from sentinews.scraping.api_scraper import ArticleSource, CNN, FOX, NEWSAPI, NYT, DEFAULT_START_DATE, DEFAULT_END_DATE
 
 load_dotenv()
 
@@ -261,3 +263,93 @@ class TestModels:
 
         # Probabilities must add to 1
         assert 1 - 1e5 < sentiment['p_pos'] + sentiment['p_neg'] + sentiment['p_neu'] < 1 + 1e5
+
+
+class TestScraper:
+
+    @pytest.fixture
+    def cnn(self):
+        return CNN(interactive=False, start_date=None, end_date=None)
+
+    def test_init(self):
+        """
+        Check to see if an improper date is given, the defaults will be used.
+        :return:
+        :rtype:
+        """
+        start_date = '2019-01-01'
+        end_date = '2020-01-01'
+        custom_cnn = CNN(interactive=False, start_date=start_date, end_date=end_date)
+        custom_nyt = NYT(interactive=False, start_date=start_date, end_date=end_date)
+        custom_fox = FOX(interactive=False, start_date=start_date, end_date=end_date)
+        assert custom_cnn.start_date == DEFAULT_START_DATE
+        assert custom_cnn.end_date == DEFAULT_END_DATE
+
+        assert custom_nyt.start_date == DEFAULT_START_DATE
+        assert custom_nyt.end_date == DEFAULT_END_DATE
+
+        assert custom_fox.start_date == DEFAULT_START_DATE
+        assert custom_fox.end_date == DEFAULT_END_DATE
+
+        # Check if it can handle end date coming before start date
+        start_date = '2020-01-20'
+        end_date = '2020-01-01'
+
+        custom_cnn = CNN(interactive=False, start_date=start_date, end_date=end_date)
+        custom_nyt = NYT(interactive=False, start_date=start_date, end_date=end_date)
+        custom_fox = FOX(interactive=False, start_date=start_date, end_date=end_date)
+        assert custom_cnn.start_date == DEFAULT_START_DATE
+        assert custom_cnn.end_date == DEFAULT_END_DATE
+
+        assert custom_nyt.start_date == DEFAULT_START_DATE
+        assert custom_nyt.end_date == DEFAULT_END_DATE
+
+        assert custom_fox.start_date == DEFAULT_START_DATE
+        assert custom_fox.end_date == DEFAULT_END_DATE
+
+    yesterday = datetime.now(tz=timezone.utc) - timedelta(days=1)
+    date_strings = [yesterday.isoformat(),
+                    (yesterday + timedelta(days=10)).isoformat(),
+                    'not a date',
+                    '2020-01-01',
+                    '2020-01-02']
+    afters = [None,
+              None,
+              None,
+              isoparse('2020-01-01') + timedelta(days=5),
+              datetime.fromisoformat('2020-01-01')]
+    # Results of the check
+    assertion = [True, False, False, False, True]
+
+    @pytest.mark.parametrize("date_strings, afters, assertion",
+                             list(zip(date_strings, afters, assertion)))
+    def test_is_valid_date(self, date_strings, afters, assertion):
+
+        assert ArticleSource.is_valid_date(date_string=date_strings,
+                                           after=afters) == assertion
+
+    titles = ['Only trump',
+              'only biden',
+              'only warren',
+              'only sanders',
+              'only BuTTigieg',
+              'only haRRis',
+              'trump and biden',
+              'biden. warren. harris,'
+              'trump biden warren sanders harris buttigieg',
+              'a bunch of nonsense not related']
+    assertion = [False, False, False, False, False, False, True, True, True, False]
+
+    @pytest.mark.parametrize("title, assertion", list(zip(titles, assertion)))
+    def test_improper_title(self, title, assertion):
+        """
+        Testing if the title check method works. It should return true when
+        there is one and only one candidate's name in the title.
+        :param title: Title to be checked for validity
+        :type title: str
+        :param assertion: used as base truth for title validity
+        :type assertion: bool
+        """
+        assert ArticleSource.improper_title(title) == assertion
+
+
