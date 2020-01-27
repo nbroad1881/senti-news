@@ -41,7 +41,7 @@ class TestDataBase:
                        lstm_p_neg=-.3)
 
     @pytest.fixture()
-    def database(self, ):
+    def database(self):
         """
         DataBase object to be used in other tests.
         :return: DataBase with default configuration from environment variables.
@@ -124,7 +124,7 @@ class TestDataBase:
 
         # Since it was deleted, it shouldn't be able to find the article
         find = database.find_row(url)
-        assert find is False
+        assert find is None
 
     def test_get_urls_in_table(self, database):
         """
@@ -164,10 +164,11 @@ class TestDataBase:
                                   'news_co',
                                   'text')
         # Check if the url is in the database
-        assert database.in_table(url)
+        assert database.in_table(url) is True
 
         # Pull that information back and make sure there are no sentiment scores
         row = database.find_row(url)
+        assert row is not None
         assert row.vader_p_pos is None
         assert row.vader_p_neg is None
         assert row.vader_p_neu is None
@@ -194,7 +195,7 @@ class TestDataBase:
 
         # Delete the dummy row and make sure it is out of the database
         database.delete_row(url)
-        assert database.find_row(url) is False
+        assert database.find_row(url) is None
 
 
 class TestModels:
