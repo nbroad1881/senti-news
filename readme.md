@@ -11,7 +11,15 @@ sentinews.models contains 3 models currently (TextBlob, VADER, LSTM), with a 4th
 #### TextBlob
 TextBlob's model is trained with an nltk NaiveBayesClassifier on IMDB data (nltk.corpus.movie_reviews). This model uses the frequency of certain words to determine the probaility of the text being positive or negative. A Naive Bayes Model works by finding the empirical probability of a piece of label having certain features, the probability of the features, and the probability of the label. These all get combined using Bayes rule to find the probability of a label given features. This is a Naive approach because it assumes all the features are independent.
 
-![Bayes rule](https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/equation.svg?sanitize=true <src="https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/equation.svg?sanitize=true"> "Naive Bayes equation")
+![Bayes rule][equation]
+
+where ![prob-l][p(l)] is the event that label=![l][l] and ![prob-f][p(f)] is the event that features=![f][f]
+
+[equation]: https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/equation.svg?sanitize=true "Naive Bayes equation"
+[p(l)]:https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/prob-L.svg?sanitize=true "Probability of event L"
+[p(f)]:https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/prob-F.svg?sanitize=true "Probability of event F"
+[f]:https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/f.svg?sanitize=true "event f"
+[l]:https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/l.svg?sanitize=true "event l"
 
 
 ### VADER
