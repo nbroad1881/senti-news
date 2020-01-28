@@ -1,20 +1,29 @@
-### What
-The goal of this project is to predict the popularity of each candidate.  As of October 1, there are 19 Democrats and 4 Republicans in contention for the presidential nomination. Other parties and candidates may be considered in the future as an extension.
+# Sentinews
+Scraping tools and sentiment analzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election by Nicholas M Broad ([sentimentr.nmbroad.com](sentimentr.nmbroad.com)).
 
-### How
-Use news text data to predict popularity of presidential candidates in the United States 2020 election. The news sources will have different biases and based in different regions. Initial approaches can just use lexicons, tokenization, and other rule-based approaches. Next, sentiment analysis and other NLP techniques will be used to determine whether articles are positive or negative.
+## Background
+I thought it would be interesting to see if trends in sentiment toward candidates could be seen in news headlines. Even though journalism is meant to be objective, small amounts of subjectivity can show up now and again. Most people know that CNN and Fox News are on opposite sides of the political viewpoint spectrum. CNN is the more liberal one and Fox the more conservative. 
+ 
+
+## Sentiment Analysis Models
+sentinews.models contains 3 (TextBlob, VADER, LSTM) models currently, with a 4th (BERT) on the way. TextBlob and Vader are pre-existing tools with sentiment analysis functionality, and the LSTM and BERT models are trained by 
+
+#### TextBlob
+TextBlob's model is trained with an nltk NaiveBayesClassifier on IMDB data (nltk.corpus.movie_reviews). This model uses the frequency of certain words to determine the probaility of the text being positive or negative. A Naive Bayes Model works by finding the empirical probability of a piece of label having certain features, the probability of the features, and the probability of the label. These all get combined using Bayes rule to find the probability of a label given features. This is a Naive approach because it assumes all the features are independent.
+
+![Bayes rule](Equation "L stands for label, F stands for features")
 
 
+### VADER
+VADER's model is a lexicon approach using social media posts from Twitter. It is capable of understanding emoticons (e.g. :-) ), punctuation (!!!), slang (nah) and popular acronyms (LOL).  ~9,000 token features were rated using multiple human judges on an integer scale from -4 (extremely negative) to +4 (extremely positive).
 
-### Why
-It is generally regarded as very difficult to predict the popularity of a presidential candidate, and it could be useful for the candidate or active supporters to know what makes a candidate’s popularity increase.
+### LSTM
+The LSTM model is built by me and follows the [Universal Language Model Fine-tuning (ULMFiT) technique used by Jeremy Howard.](https://arxiv.org/abs/1801.06146) It is essentially the equivalent of transfer learning in computer vision.  It starts with a well-trained language model, such as the [AWD-LSTM](https://arxiv.org/abs/1708.02182), and then it trains it's language model on news-related text.  The model then get's trained for sentiment analysis on news headlines. The hope is that there is fundamental language understanding in the base models and the last layers help it understand the specific task of gauging sentiment in news headlines.
 
+### BERT
+Though not implemented here yet, BERT is the first prominent model using a transformer architecture.  Transformers enable text understanding of an entire sentence at once, rather than the sequential nature of RNNs and LSTMs. In that sense, they are considered bi-directional (the B in BERT), and some might argue there is no direction any more.   
 
-### Goals
-1.	Create a pipeline to take text data from the news sources, clean the text data, and then analyze it using lexicons, tokenization, and other rule-based approaches.
-2.	Start with just the top 5 democratic candidates right now (Biden, Warren, Sanders, Buttigieg, Harris)
-3.	Build more complicated models that account for the news outlet’s bias, using NLP approaches like sentiment analysis, vectorization, neural networks, and transformers.
-4.	Have an interactive user-facing product to show latest results.
-
+## Scraping Tools
+The scraping tools are essentially wrappers for the APIs of CNN, The New York Times, and Fox News. There is additional support for NewsAPI to get even more headlines, but to constrain the problem initially, just those main three are used. NewsAPI does make it convenient to get recent headlines, but the free account can only search 30 days in the past. Searching beyond that requires the other APIs.
 
 
