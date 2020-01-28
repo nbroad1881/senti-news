@@ -11,7 +11,7 @@ sentinews.models contains 3 models currently (TextBlob, VADER, LSTM), with a 4th
 #### TextBlob
 TextBlob's model is trained with an nltk NaiveBayesClassifier on IMDB data (nltk.corpus.movie_reviews). This model uses the frequency of certain words to determine the probaility of the text being positive or negative. A Naive Bayes Model works by finding the empirical probability of a piece of label having certain features, the probability of the features, and the probability of the label. These all get combined using Bayes rule to find the probability of a label given features. This is a Naive approach because it assumes all the features are independent.
 
-![Bayes rule](https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/equation.svg?sanitize=true <src="https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/equation.svg?sanitize=true"> "Naive Bayes equation")
+![Bayes rule](https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/equation.svg?sanitize=true "Naive Bayes equation")
 
 
 ### VADER
