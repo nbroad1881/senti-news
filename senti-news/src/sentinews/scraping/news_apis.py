@@ -5,7 +5,6 @@ from dateutil.parser import isoparse
 from abc import ABC, abstractmethod
 import os
 from urllib.parse import quote
-from requests import Request
 from newsapi import NewsApiClient
 
 from dotenv import load_dotenv
@@ -22,7 +21,7 @@ load_dotenv()
 logging.basicConfig(level=logging.DEBUG)
 
 """
-api_scraper.py contains 1 abstract ArticleSource and 3 subclasses: NYT, CNN, FOX
+news_apis.py contains 1 abstract ArticleSource and 3 subclasses: NYT, CNN, FOX
 Each will use scrapy to search the APIs of NYT, CNN, and FOX for news articles.
 The query will contain presidential candidate names.
 Parse turns each result into a NewsItem.
@@ -30,7 +29,7 @@ Every NewsItem will be sent through the item pipeline (NewsItemPipeline).
 NewsItemPipeline will then send the result to the database
 """
 
-DEFAULT_NUM_DAYS_BACK = 7
+DEFAULT_NUM_DAYS_BACK = 20
 DEFAULT_END_DATE = datetime.now(timezone.utc)
 DEFAULT_START_DATE = DEFAULT_END_DATE - timedelta(days=DEFAULT_NUM_DAYS_BACK)
 START_DATE = 1
@@ -72,6 +71,8 @@ class ArticleSource(ABC):
         BUTTIGIEG_OPTION: 'Pete Buttigieg',
         ALL_CANDIDATES: ''
     }
+
+    API_URL = 'http://0.0.0.0:6000/article/'
 
     def __init__(self, interactive, start_date=None, end_date=None):
         """
@@ -221,7 +222,7 @@ class ArticleSource(ABC):
 
         # To make sure the passed date_string is after the passed date.
         if after:
-            if datetime.utcnow() > datetime_ > after:
+            if datetime.now(tz=timezone.utc) > datetime_ > after:
                 return True
             logging.info(f"{date_string} is not in correct time range")
             return False
@@ -270,9 +271,9 @@ class ArticleSource(ABC):
         pass
 
     def post_article_to_db(self, article_info, scores):
-        api_url = 'http://0.0.0.0:5000/article/'
+
         payload = {**article_info, **scores}
-        response = requests.post(api_url, params=payload)
+        response = requests.post(self.API_URL, params=payload)
         logging.info(f"Made POST request to database API, response code: {response.status_code}")
 
 
@@ -721,17 +722,20 @@ class NEWSAPI(ArticleSource):
                     article_info = {
                         'url': article['url'],
                         'datetime': isoparse(article['publishedAt']),
-                        'title': article['title'],
-                        'news_co': article['source'].get('name'),
-                        'text': article['content'],
+                        'title': article.get('title', ''),
+                        'news_co': article.get['source'].get('name', ''),
+                        'text': article.get('content', ''),
                     }
                 except KeyError as e:
                     logging.info(f"Article key error({e}): {article['url']}")
                     continue
+                except ValueError as e:
+                    logging.info(f"Could not parse date {e}: {article['publishedAt']}")
+                    continue
                 scores = analyze_title(analyzers, article_info['title'])
                 self.post_article_to_db(article_info=article_info, scores=scores)
 
-        logging.info(f"Invalid response from NewsAPI: {result['status']}")
+        logging.info(f"Invalid response from NewsAPI: {result}")
 
     def create_api_query(self, q, page, page_size, qintitle):
         from_param, to_param = self.make_date_strings()
