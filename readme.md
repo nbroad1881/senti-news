@@ -13,25 +13,44 @@ TextBlob's model is trained with an nltk NaiveBayesClassifier on IMDB data (nltk
 
 ![Bayes rule][equation]
 
-where ![prob-l][p(l)] is the event that label=![l][l] and ![prob-f][p(f)] is the event that features=![f][f]
+where P(L) is the probability of a label occurring and P(F) is the probabilty of a feature occurring.
 
 [equation]: https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/equation.svg?sanitize=true "Naive Bayes equation"
-[p(l)]:https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/prob-L.svg?sanitize=true "Probability of event L"
-[p(f)]:https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/prob-F.svg?sanitize=true "Probability of event F"
-[f]:https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/f.svg?sanitize=true "event f"
-[l]:https://raw.githubusercontent.com/nbroad1881/senti-news/master/assets/l.svg?sanitize=true "event l"
+
 
 
 ### VADER
-VADER's model is a lexicon approach using social media posts from Twitter. It is capable of understanding emoticons (e.g. :-) ), punctuation (!!!), slang (nah) and popular acronyms (LOL).  ~9,000 token features were rated using multiple human judges on an integer scale from -4 (extremely negative) to +4 (extremely positive).
+[VADER's model](https://github.com/cjhutto/vaderSentiment) is a lexicon approach using social media posts from Twitter. It trained to understanding emoticons (e.g. :-) ), punctuation (!!!), slang (nah) and popular acronyms (LOL). In the context of this project, the headlines will, most likely, not contain emoticons, slang or popular acronyms; however, this model hopefully will be able to gauge some level of emotion in the texts.
 
 ### LSTM
-The LSTM model is built by me and follows the [Universal Language Model Fine-tuning (ULMFiT) technique used by Jeremy Howard.](https://arxiv.org/abs/1801.06146) It is essentially the equivalent of transfer learning in computer vision.  It starts with a well-trained language model, such as the [AWD-LSTM](https://arxiv.org/abs/1708.02182), and then it trains it's language model on news-related text.  The model then get's trained for sentiment analysis on news headlines. The hope is that there is fundamental language understanding in the base models and the last layers help it understand the specific task of gauging sentiment in news headlines.
+The LSTM model is built by me and follows the [Universal Language Model Fine-tuning (ULMFiT) technique used by Jeremy Howard.](https://arxiv.org/abs/1801.06146) It is essentially the equivalent of transfer learning in computer vision.  It starts with a well-trained language model, such as the [AWD-LSTM](https://arxiv.org/abs/1708.02182), and then it trains it's language model on news-related text.  The model then get's trained for sentiment analysis on news headlines. The hope is that there is fundamental language understanding in the base models and the last layers help it understand the specific task of gauging sentiment in news headlines. Moreover, this method requires very little supervised training on my part, making it ideal.
 
 ### BERT
-Though not implemented here yet, BERT is the first prominent model using a transformer architecture.  Transformers enable text understanding of an entire sentence at once, rather than the sequential nature of RNNs and LSTMs. In that sense, they are considered bi-directional (the B in BERT), and some might argue there is no direction any more.   
+Though not implemented here yet, BERT is the first prominent model using a transformer architecture.  Transformers enable text understanding of an entire sentence at once, rather than the sequential nature of RNNs and LSTMs. In that sense, they are considered bi-directional (the B in BERT), and some might argue there is no direction any more. Perhaps the bi-directional label is just to make the acronym BERT.  
 
 ## Scraping Tools
 The scraping tools are essentially wrappers for the APIs of CNN, The New York Times, and Fox News. There is additional support for NewsAPI to get even more headlines, but to constrain the problem initially, just those main three are used. NewsAPI does make it convenient to get recent headlines, but the free account can only search 30 days in the past. Searching beyond that requires the other APIs.
 
+The scrapers are implemented in Scrapy, but that is only necessary for scraping the text body from the article. If just the headlines are desired, requests would be sufficient.
 
+
+## Usage
+This package makes use of multiple environment variables to connect to the database. Here are the fields that need to be filled in:
+
+```
+DB_DIALECT=
+DB_USERNAME=
+DB_PASSWORD=
+DB_ENDPOINT=
+DB_PORT=
+DB_NAME=
+DB_URL=${DB_DIALECT}://${DB_USERNAME}:${DB_PASSWORD}@${DB_ENDPOINT}:${DB_PORT}/${DB_NAME}
+
+DB_TABLE_NAME=
+
+NEWS_API_KEY=
+
+LSTM_PKL_MODEL_DIR=
+LSTM_PKL_FILENAME=
+```
+The only supported LSTM model type is a [`fastai.Learner` model](https://docs.fast.ai/basic_train.html#Learner) that has been exported using the [export function](https://docs.fast.ai/basic_train.html#Learner.export) into a `.pkl` file. 
