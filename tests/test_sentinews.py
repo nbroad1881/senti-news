@@ -269,7 +269,15 @@ class TestScraper:
 
     @pytest.fixture
     def cnn(self):
-        return CNN(interactive=False, start_date=None, end_date=None)
+        return CNN(interactive=False, start_date=None, end_date=None)\
+
+    @pytest.fixture
+    def nyt(self):
+        return NYT(interactive=False, start_date=None, end_date=None)
+
+    @pytest.fixture
+    def fox(self):
+        return FOX(interactive=False, start_date=None, end_date=None)
 
     def test_init(self):
         """
@@ -307,17 +315,18 @@ class TestScraper:
         assert custom_fox.start_date == DEFAULT_START_DATE
         assert custom_fox.end_date == DEFAULT_END_DATE
 
+
     yesterday = datetime.now(tz=timezone.utc) - timedelta(days=1)
     date_strings = [yesterday.isoformat(),
                     (yesterday + timedelta(days=10)).isoformat(),
                     'not a date',
-                    '2020-01-01',
-                    '2020-01-02']
+                    yesterday.isoformat(),
+                    yesterday.isoformat()]
     afters = [None,
               None,
               None,
-              isoparse('2020-01-01') + timedelta(days=5),
-              datetime.fromisoformat('2020-01-01')]
+              yesterday + timedelta(days=5),
+              yesterday - timedelta(days=2)]
     # Results of the check
     assertion = [True, False, False, False, True]
 
@@ -351,5 +360,3 @@ class TestScraper:
         :type assertion: bool
         """
         assert ArticleSource.improper_title(title) == assertion
-
-
