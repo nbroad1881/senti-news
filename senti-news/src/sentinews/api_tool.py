@@ -30,12 +30,17 @@ print("Loaded!")
 DB_API_URL = os.environ['DB_API_URL']
 
 
+#todo: have more variability with where the articles get saved. db url, local csv
 class BaseNews:
 
-    def __init__(self, start_date, end_date, num_steps):
+    def __init__(self, start_date, end_date, num_steps=None):
         self.start_date = start_date
         self.end_date = end_date
         self.increment = (end_date - start_date) / num_steps
+        if num_steps is None:
+            self.num_steps = (end_date - start_date).days*3 #break each day into 3 chunks of time
+            if self.num_steps == 0:# the case where the dates are less than a day apart
+                self.num_steps = 3
         self.num_steps = num_steps
         self.articles_logged = 0
 
