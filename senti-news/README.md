@@ -1,5 +1,5 @@
 # Sentinews
-This package contains scraping tools and sentiment analyzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election. See more at ([sentimentr.nmbroad.com](sentimentr.nmbroad.com)).
+This package contains scraping tools and sentiment analyzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election. See more at [sentimentr.nmbroad.com](sentimentr.nmbroad.com) or the analysis at <nmbroad.com/sentimentr/>
 
 [Usage](#Usage)  
 [Background](#Background)  
