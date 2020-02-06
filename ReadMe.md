@@ -1,5 +1,5 @@
 # Sentinews
-This package contains craping tools and sentiment analyzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election. See more at ([sentimentr.nmbroad.com](sentimentr.nmbroad.com)).
+This package contains scraping tools and sentiment analyzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election. See more at ([sentimentr.nmbroad.com](sentimentr.nmbroad.com)).
 
 ## Background
 I thought it would be interesting to see if trends in sentiment toward candidates could be seen in news headlines. Even though journalism is meant to be objective, small amounts of subjectivity can show up now and again. Most people know that CNN and Fox News are on opposite sides of the political viewpoint spectrum. CNN is the more liberal one and Fox the more conservative. 
@@ -49,4 +49,40 @@ NEWS_API_KEY=
 LSTM_PKL_MODEL_DIR=
 LSTM_PKL_FILENAME=
 ```
-The only supported LSTM model type is a [`fastai.Learner` model](https://docs.fast.ai/basic_train.html#Learner) that has been exported using the [export function](https://docs.fast.ai/basic_train.html#Learner.export) into a `.pkl` file. 
+The only supported LSTM model type is a [`fastai.Learner` model](https://docs.fast.ai/basic_train.html#Learner) that has been exported using the [export function](https://docs.fast.ai/basic_train.html#Learner.export) into a `.pkl` file.
+
+
+## Usage
+Set up a database, local is fine.  Put the database information in a `.env` file and put in the working directory.  Get a NewsAPI key [here](https://newsapi.org/register) or skip to [part 2](#without-newsapi).
+
+#### Using NewsAPI
+Add key to `.env` file.
+
+First make sure that the environment variables are loaded.
+```python
+from dotenv import load_dotenv
+
+load_dotenv()
+```
+
+Next load in the tool
+```python
+from sentinews.api_tool import NEWSAPI
+```
+
+Decide what time period to look at. Keep in mind that the free version of NewsAPI only allows for searching as far back as 30 days from today. Be sure to use timezone aware datetime objects.
+```python
+from datetime import datetime, timedelta, timezone
+# Date closer to present 
+end_date = datetime.now(tz=timezone.utc)
+
+# Date further back in time
+start_date = end_date - timedelta(days=10)
+```
+
+Initialize NEWSAPI object and start it up!
+```python
+news_api = NEWSAPI(start_date=start_date, end_date=end_date)
+news_api.start()
+```
+ 

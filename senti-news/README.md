@@ -13,8 +13,6 @@ TextBlob's model is trained with an nltk NaiveBayesClassifier on IMDB data (nltk
 While news headlines and movie reviews should be quite different, a movie review does contain the reviewers feelings about what they thought of the movie. That is, there is some overlap between the language used to express positive and negative emotions in both.
 
 
-
-
 ### VADER
 [VADER's model](https://github.com/cjhutto/vaderSentiment) is a lexicon approach using social media posts from Twitter. It trained to understanding emoticons (e.g. :-) ), punctuation (!!!), slang (nah) and popular acronyms (LOL). In the context of this project, the headlines will, most likely, not contain emoticons, slang or popular acronyms; however, this model sure to gauge some level of emotion in the texts.  
 
@@ -25,10 +23,7 @@ The LSTM model is built by me and follows the [Universal Language Model Fine-tun
 Though not implemented here yet, BERT is the first prominent archtecture using a transformer architecture.  Transformers enable text understanding of an entire sentence at once, rather than the sequential nature of RNNs and LSTMs. In that sense, they are considered bi-directional (the B in BERT), and the transformer is trained by guessing the missing word in a sentence, that is, looking one direction from the word and also a second, opposite direction.
 
 ## Scraping Tools
-The scraping tools are essentially wrappers for the APIs of CNN, The New York Times, and Fox News. There is additional support for `NewsAPI`  to get even more headlines from other sources, but to constrain the problem initially, just those main three are used. NewsAPI does make it convenient to get recent headlines, but the free account can only search 30 days in the past. Searching beyond that requires the other APIs.
-
-The scrapers are implemented in `Scrapy`, but that is only necessary for scraping the text body from the article. If just the headlines are desired, `requests` would be sufficient.
-
+The scraping tools are essentially wrappers for the APIs of CNN, The New York Times, and Fox News. There is additional support for `NewsAPI`  to get even more headlines from other sources, but to constrain the problem initially, just those main three are used. NewsAPI does make it convenient to get recent headlines, but the free account can only search 30 days in the past. Searching beyond that requires the other APIs. 
 
 ## Usage
 This package makes use of multiple environment variables to connect to the database. Here are the fields that need to be filled in:
@@ -49,4 +44,40 @@ NEWS_API_KEY=
 LSTM_PKL_MODEL_DIR=
 LSTM_PKL_FILENAME=
 ```
-The only supported LSTM model type is a [`fastai.Learner` model](https://docs.fast.ai/basic_train.html#Learner) that has been exported using the [export function](https://docs.fast.ai/basic_train.html#Learner.export) into a `.pkl` file. 
+The only supported LSTM model type is a [`fastai.Learner`](https://docs.fast.ai/basic_train.html#Learner) that has been exported using the [export function](https://docs.fast.ai/basic_train.html#Learner.export) into a `.pkl` file. 
+
+
+
+## Usage
+Set up a database, local is fine.  Put the database information in a `.env` file and put in the working directory.  Get a NewsAPI key [here](https://newsapi.org/register) or skip to [part 2](#without-newsapi).
+
+#### Using NewsAPI
+Add key to `.env` file.
+
+First make sure that the environment variables are loaded.
+```python
+from dotenv import load_dotenv
+
+load_dotenv()
+```
+
+Next load in the tool
+```python
+from sentinews.api_tool import NEWSAPI
+```
+
+Decide what time period to look at. Keep in mind that the free version of NewsAPI only allows for searching as far back as 30 days from today. Be sure to use timezone aware datetime objects.
+```python
+from datetime import datetime, timedelta, timezone
+# Date closer to present 
+end_date = datetime.now(tz=timezone.utc)
+
+# Date further back in time
+start_date = end_date - timedelta(days=10)
+```
+
+Initialize NEWSAPI object and start it up!
+```python
+news_api = NEWSAPI(start_date=start_date, end_date=end_date)
+news_api.start()
+```
