@@ -30,15 +30,14 @@ print("Loaded!")
 DB_API_URL = os.environ['DB_API_URL']
 
 
-#todo: have more variability with where the articles get saved. db url, local csv
 class BaseNews:
 
-    def __init__(self, start_date, end_date, save_to_csv=False, num_steps=None):
+    def __init__(self, start_date, end_date, save_type='csv', num_steps=None):
         self.start_date = start_date
         self.end_date = end_date
         self.increment = (end_date - start_date) / num_steps
-        self.save_to_csv = save_to_csv
-        if save_to_csv:
+        self.save_type = save_type #save_type can be csv, sql, or api
+        if save_type == 'csv' or save_type == 'db':
             import pandas as pd
             self.frame = pd.DataFrame(columns=[
                 'url', 'news_co', 'datetime',
@@ -62,7 +61,7 @@ class BaseNews:
         return sum([1 if name in title.lower() else 0 for name in LAST_NAMES]) != 1
 
     def post_article_to_db(self, article_info, scores):
-        if self.save_to_csv:
+        if self.save_type != 'api':
             self.frame.append({**article_info, **scores})
             self.articles_logged += 1
             return
@@ -71,6 +70,7 @@ class BaseNews:
         header = {
             'password': os.environ['AUTH_PASSWORD'],
         }
+
         response = requests.post(DB_API_URL, params=payload, headers=header)
         logging.info(f"Made POST request to database API, response code: {response.status_code}")
         if response.status_code == 201:
@@ -79,9 +79,15 @@ class BaseNews:
     def get_articles_logged(self):
         return self.articles_logged
 
-    def save_to_csv(self):
-        filename = datetime.utcnow().isoformat() + '-sentinews-data.csv'
-        self.frame.to_csv(filename)
+    #todo: make more robust
+    def store_results(self):
+        if self.save_type == 'csv':
+            filename = datetime.utcnow().isoformat() + '-sentinews-data.csv'
+            self.frame.to_csv(filename)
+        elif self.save_type == 'db':
+            self.frame.to_sql("table_name",
+                              os.environ['DB_URL'],
+                              if_exists='append')
 
 
 class CNN(BaseNews):
@@ -97,6 +103,7 @@ class CNN(BaseNews):
                 if response.status_code == 200:
                     for article in json.loads(response.text)['result']:
                         self.extract_information(article)
+        self.store_results()
 
     def create_api_query(self, query, page):
         """
@@ -162,6 +169,7 @@ class NYT(BaseNews):
                         logging.info("Too many requests")
 
             self.start_date += self.increment
+        self.store_results()
 
     def create_api_query(self, query, page, sort='newest'):
         """
@@ -251,6 +259,7 @@ class FOX(BaseNews):
                         logging.info("Too many requests")
 
             self.start_date += self.increment
+        self.store_results()
 
     def create_api_query(self, query, start):
         """
@@ -324,6 +333,7 @@ class NEWSAPI(BaseNews):
                     self.extract_information(article)
 
             self.start_date += self.increment
+        self.store_results()
 
     def extract_information(self, article):
         title = article['title']
