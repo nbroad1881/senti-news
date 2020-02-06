@@ -1,10 +1,10 @@
 # Sentinews
 This package contains scraping tools and sentiment analyzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election. See more at ([sentimentr.nmbroad.com](sentimentr.nmbroad.com)).
 
-[Usage](#Usage)
-[Background](#Background)
-[Models](#Sentiment-Analysis-Models)
-[Scraping Tools](#Scraping-Tools)
+[Usage](#Usage)  
+[Background](#Background)  
+[Models](#Sentiment-Analysis-Models)  
+[Scraping Tools](#Scraping-Tools)  
 
 
 ## Usage
@@ -29,7 +29,7 @@ LSTM_PKL_FILENAME=
 The only supported LSTM model type is a [`fastai.Learner`](https://docs.fast.ai/basic_train.html#Learner) that has been exported using the [export function](https://docs.fast.ai/basic_train.html#Learner.export) into a `.pkl` file.
 
 #### Setup
-Set up a database, local is fine.  Put the database information in a `.env` file and put in the working directory.  Get a NewsAPI key [here](https://newsapi.org/register) or skip to [part 2](#No-News-API-key).
+Set up a database, local is fine.  Put the database information in a `.env` file and put in the working directory.  Get a NewsAPI key [here](https://newsapi.org/register) or skip to [this section](#No-News-API-key).
 
 #### Using NewsAPI
 Add key to `.env` file.

@@ -1,10 +1,10 @@
 # Sentinews
 This package contains scraping tools and sentiment analyzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election. See more at ([sentimentr.nmbroad.com](sentimentr.nmbroad.com)).
 
-[Usage](#Usage)
-[Background](#Background)
-[Models](#Sentiment-Analysis-Models)
-[Scraping Tools](#Scraping-Tools)
+[Usage](#Usage)  
+[Background](#Background)  
+[Models](#Sentiment-Analysis-Models)  
+[Scraping Tools](#Scraping-Tools)  
 
 
 ## Usage
