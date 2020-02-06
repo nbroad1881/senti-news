@@ -27,7 +27,7 @@ analyzers = [
 ]
 print("Loaded!")
 
-DB_API_URL = 'http://0.0.0.0:5000/article/'
+DB_API_URL = os.environ['DB_API_URL']
 
 
 class BaseNews:
