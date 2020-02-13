@@ -354,7 +354,7 @@ class NEWSAPI(BaseNews):
 
 
 if __name__ == '__main__':
-    num_divides = 100
+    num_divides = 30
     today = datetime.now(tz=timezone.utc)
     start_date = today - timedelta(days=7)
 
@@ -364,13 +364,13 @@ if __name__ == '__main__':
                    "3. Fox News\n"
                    "4. NewsAPIs\n")
     if choice == '1':
-        api_choice = NYT(start_date=start_date, end_date=today, num_steps=num_divides)
+        api_choice = NYT(start_date=start_date, end_date=today, num_steps=num_divides, save_type='api')
     elif choice == '2':
-        api_choice = CNN(start_date=start_date, end_date=today, num_steps=num_divides)
+        api_choice = CNN(start_date=start_date, end_date=today, num_steps=num_divides, save_type='api')
     elif choice == '3':
-        api_choice = FOX(start_date=start_date, end_date=today, num_steps=num_divides)
+        api_choice = FOX(start_date=start_date, end_date=today, num_steps=num_divides, save_type='api')
     elif choice == '4':
-        api_choice = NEWSAPI(start_date=start_date, end_date=today, num_steps=num_divides)
+        api_choice = NEWSAPI(start_date=start_date, end_date=today, num_steps=num_divides, save_type='api')
     else:
         import sys
 
