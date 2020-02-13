@@ -9,6 +9,10 @@ from textblob.sentiments import NaiveBayesAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from fastai.text import *
 
+from transformers import BertTokenizer, BertForSequenceClassification
+import torch
+
+
 """
 models.py
 ---
@@ -199,4 +203,53 @@ class LSTMAnalyzer:
             'p_pos': round(float(prob_tensor[2]), 3),
             'p_neu': round(float(prob_tensor[1]), 3),
             'p_neg': round(float(prob_tensor[0]), 3)
+        }
+
+
+class BERTAnalyzer:
+
+    def __init__(self, model_dir=None):
+        """
+        Load a BertForSequenceClassification Model from transformers
+        :param model_dir: Directory that holds saved model
+        :type model_dir: str or Path
+        :param model_name: Name of model to load
+        :type model_name: str
+        """
+        if model_dir:
+            self.model_dir = pathlib.Path(model_dir)
+        else:
+            self.model_dir = pathlib.Path(os.environ.get("BERT_PKL_MODEL_DIR"))
+        try:
+            self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+            self.model = BertForSequenceClassification.from_pretrained(self.model_dir)
+        except BaseException as e:
+            logging.info("Failed to load LSTM model. " + str(e))
+
+        self.name = 'bert'
+
+
+    def evaluate(self, text):
+        """
+        Gives the sentiment scores for the given text.
+        :param text: Text to be scored for sentiment
+        :type text: str
+        :return: dictionary of sentiment scores
+        'p_pos', 'p_neg', 'p_neu' are the probabilities of those classifications.
+        :rtype: dict
+        """
+        # Other variables returned are unnecessary
+        max_length = 25
+        encodings = self.tokenizer.encode_plus(text, add_special_tokens=True,
+                                            max_length=max_length,
+                                          pad_to_max_length=True)
+        input_tokens = torch.tensor([e['input_ids'] for e in encodings], dtype=torch.int64)
+        attn_masks = torch.tensor([e['attention_mask'] for e in encodings], dtype=torch.int64)
+        y_labels = torch.tensor([1], dtype=torch.int64, requires_grad=False)
+        loss, pred = self.model(input_ids=input_tokens, attention_mask=attn_masks, labels=y_labels)
+
+        return {
+            'p_pos': round(pred[2].item(), 3),
+            'p_neu': round(pred[1].item(), 3),
+            'p_neg': round(pred[0].item(), 3)
         }
