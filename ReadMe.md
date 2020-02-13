@@ -1,10 +1,10 @@
 # Sentinews
-This package contains scraping tools and sentiment analyzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election. See more at [sentimentr.nmbroad.com](https://sentimentr.nmbroad.com) or the analysis at [nmbroad.com/sentimentr/](https://nmbroad.com/sentimentr/)
+This package contains a data sourcing pipeline and sentiment analyzers for a sentiment analysis project focused on news headlines about US presidential candidates in the 2020 election. See more at [sentimentr.nmbroad.com](https://sentimentr.nmbroad.com) or the analysis at [nmbroad.com/sentimentr/](https://nmbroad.com/sentimentr/)
 
 [Usage](#Usage)  
 [Background](#Background)  
 [Models](#Sentiment-Analysis-Models)  
-[Scraping Tools](#Scraping-Tools)  
+[Database Sourcing Pipeline](#Database-Sourcing-Pipeline)  
 
 
 ## Usage
@@ -114,8 +114,8 @@ The LSTM model is built by me and follows the [Universal Language Model Fine-tun
 ### BERT
 Though not implemented here yet, BERT is the first prominent archtecture using a transformer architecture.  Transformers enable text understanding of an entire sentence at once, rather than the sequential nature of RNNs and LSTMs. In that sense, they are considered bi-directional (the B in BERT), and the transformer is trained by guessing the missing word in a sentence, that is, looking one direction from the word and also a second, opposite direction.
 
-## Scraping Tools
-The scraping toolkit starts with wrappers for the APIs of CNN, The New York Times, and Fox News. There is additional support for `NewsAPI`  to get even more headlines from other sources, but to constrain the problem initially, just those main three are used. NewsAPI does make it convenient to get recent headlines, but the free account can only search 30 days in the past. Searching beyond that requires the other APIs.
+## Database Sourcing Pipeline
+The toolkit starts with wrappers for the APIs of CNN, The New York Times, and Fox News. There is additional support for `NewsAPI`  to get even more headlines from other sources, but to constrain the problem initially, just those main three are used. NewsAPI does make it convenient to get recent headlines, but the free account can only search 30 days in the past. Searching beyond that requires the other APIs.
 
 Using those APIs a large number of urls can be generated.  Scrapy is then used to go through each url to pull the body text. Analyzing the body of the article is an extension to this project and a task for the future. For now it just focuses on headlines.
 
