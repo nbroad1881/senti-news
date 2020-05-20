@@ -45,7 +45,7 @@ google-pasta==0.1.8
 grpcio==1.25.0
 gunicorn==19.9.0
 h5py==2.10.0
-httplib2==0.12.3
+httplib2==0.18.0
 hyperlink==19.0.0
 idna==2.8
 importlib-metadata==0.23
